@@ -163,28 +163,128 @@ fn validate_mjml(text: &str) -> Vec<Diagnostic> {
     diagnostics
 }
 
+/// Extracts the source text at a byte span, trimmed and truncated for display.
+fn snippet_at(text: &str, start: usize, end: usize) -> String {
+    let s = text
+        .get(start..end.min(text.len()))
+        .unwrap_or("")
+        .trim();
+    if s.len() > 60 {
+        format!("{}...", &s[..57])
+    } else {
+        s.to_string()
+    }
+}
+
+/// Scans backwards from `byte_offset` in `text` to find the nearest opening tag name.
+/// Returns the tag name (e.g. "mj-image") or None if not found.
+fn find_parent_tag(text: &str, byte_offset: usize) -> Option<String> {
+    let before = text.get(..byte_offset.min(text.len()))?;
+    // Find the last '<' that starts an opening tag (not '</' or '<!--')
+    let mut search_from = before.len();
+    loop {
+        let idx = before[..search_from].rfind('<')?;
+        let after_bracket = &before[idx + 1..];
+        // Skip closing tags and comments
+        if after_bracket.starts_with('/') || after_bracket.starts_with('!') {
+            if idx == 0 {
+                return None;
+            }
+            search_from = idx;
+            continue;
+        }
+        // Extract the tag name (sequence of alphanumeric + hyphen chars)
+        let tag_name: String = after_bracket
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '-')
+            .collect();
+        if tag_name.is_empty() {
+            if idx == 0 {
+                return None;
+            }
+            search_from = idx;
+            continue;
+        }
+        return Some(tag_name);
+    }
+}
+
 /// Extracts position information from a mrml parser error and returns a
-/// Range and error message suitable for an LSP diagnostic.
+/// Range and human-friendly error message suitable for an LSP diagnostic.
 fn error_to_range_and_message(
     text: &str,
     err: &mrml::prelude::parser::Error,
 ) -> (Range, String) {
     use mrml::prelude::parser::Error;
 
-    let message = err.to_string();
-
     match err {
-        // Variants that carry a Span (byte offsets into the source text).
-        Error::UnexpectedElement { position, .. }
-        | Error::UnexpectedToken { position, .. }
-        | Error::InvalidAttribute { position, .. }
-        | Error::InvalidFormat { position, .. } => {
+        Error::UnexpectedElement { position, .. } => {
             let range = span_to_range(text, position.start, position.end);
+            let snippet = snippet_at(text, position.start, position.end);
+            let parent = find_parent_tag(text, position.start);
+            let message = match (snippet.is_empty(), parent) {
+                (true, _) => "Unexpected element".to_string(),
+                (false, Some(tag)) => format!(
+                    "Unexpected element `{snippet}` inside `<{tag}>` — `<{tag}>` cannot contain this element"
+                ),
+                (false, None) => format!(
+                    "Unexpected element: `{snippet}` is not valid here"
+                ),
+            };
             (range, message)
         }
-        Error::MissingAttribute { position, .. }
-        | Error::IncludeLoaderError { position, .. } => {
+        Error::UnexpectedToken { position, .. } => {
             let range = span_to_range(text, position.start, position.end);
+            let snippet = snippet_at(text, position.start, position.end);
+            let parent = find_parent_tag(text, position.start);
+            let message = match (snippet.is_empty(), parent) {
+                (true, _) => "Unexpected token".to_string(),
+                (false, Some(tag)) => format!(
+                    "Unexpected content inside `<{tag}>` — `<{tag}>` cannot contain `{snippet}`"
+                ),
+                (false, None) => format!(
+                    "Unexpected token: `{snippet}` is not valid here"
+                ),
+            };
+            (range, message)
+        }
+        Error::InvalidAttribute { position, .. } => {
+            let range = span_to_range(text, position.start, position.end);
+            let snippet = snippet_at(text, position.start, position.end);
+            let message = if snippet.is_empty() {
+                "Invalid attribute".to_string()
+            } else {
+                format!("Invalid attribute in `{snippet}`")
+            };
+            (range, message)
+        }
+        Error::InvalidFormat { position, .. } => {
+            let range = span_to_range(text, position.start, position.end);
+            let snippet = snippet_at(text, position.start, position.end);
+            let message = if snippet.is_empty() {
+                "Invalid format".to_string()
+            } else {
+                format!("Invalid format in `{snippet}`")
+            };
+            (range, message)
+        }
+        Error::MissingAttribute {
+            name, position, ..
+        } => {
+            let range = span_to_range(text, position.start, position.end);
+            let snippet = snippet_at(text, position.start, position.end);
+            let message = if snippet.is_empty() {
+                format!("Missing required attribute `{name}`")
+            } else {
+                format!("Missing required attribute `{name}` on `{snippet}`")
+            };
+            (range, message)
+        }
+        Error::IncludeLoaderError {
+            position, source, ..
+        } => {
+            let range = span_to_range(text, position.start, position.end);
+            let message = format!("Failed to load include `{}`: {source}", source.path);
             (range, message)
         }
         // htmlparser errors carry a TextPos with 1-based row/col.
@@ -196,12 +296,20 @@ fn error_to_range_and_message(
                 pos.col.saturating_sub(1),
             );
             let range = Range::new(lsp_pos, lsp_pos);
+            let message = format!("Syntax error: {source}");
             (range, message)
         }
-        // Variants without position information: report at the start of the document.
-        Error::EndOfStream { .. } | Error::SizeLimit { .. } | Error::NoRootNode => {
+        Error::EndOfStream { .. } => {
             let range = Range::new(Position::new(0, 0), Position::new(0, 0));
-            (range, message)
+            (range, "Unexpected end of file — check for unclosed tags".to_string())
+        }
+        Error::SizeLimit { .. } => {
+            let range = Range::new(Position::new(0, 0), Position::new(0, 0));
+            (range, "Document exceeds the maximum size limit".to_string())
+        }
+        Error::NoRootNode => {
+            let range = Range::new(Position::new(0, 0), Position::new(0, 0));
+            (range, "Missing `<mjml>` root element".to_string())
         }
     }
 }
@@ -358,6 +466,7 @@ mod tests {
         let diagnostics = validate_mjml(text);
         assert!(!diagnostics.is_empty(), "empty input should produce a diagnostic");
         assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
+        assert_eq!(diagnostics[0].message, "Missing `<mjml>` root element");
     }
 
     #[test]
@@ -376,6 +485,12 @@ mod tests {
         assert!(!diagnostics.is_empty(), "unclosed tag should produce a diagnostic");
         assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::ERROR));
         assert_eq!(diagnostics[0].source, Some("mjml".to_string()));
+        assert!(
+            diagnostics[0].message.contains("end of file")
+                || diagnostics[0].message.contains("Unexpected"),
+            "message should be human-friendly, got: {}",
+            diagnostics[0].message
+        );
     }
 
     #[test]
@@ -391,6 +506,11 @@ mod tests {
         let text = "<html><body>Hello</body></html>";
         let diagnostics = validate_mjml(text);
         assert!(!diagnostics.is_empty(), "non-MJML HTML should produce a diagnostic");
+        assert!(
+            diagnostics[0].message.contains("html"),
+            "message should show the unexpected element, got: {}",
+            diagnostics[0].message
+        );
     }
 
     #[test]
@@ -401,6 +521,11 @@ mod tests {
         assert!(!diagnostics.is_empty(), "invalid XML should produce a diagnostic");
         let diag = &diagnostics[0];
         assert_eq!(diag.severity, Some(DiagnosticSeverity::ERROR));
+        assert!(
+            diag.message.starts_with("Syntax error:"),
+            "ParserError should have 'Syntax error:' prefix, got: {}",
+            diag.message
+        );
         // htmlparser reports this error at row 2, col 1 (1-based),
         // which maps to LSP Position { line: 1, character: 0 }.
         assert_eq!(
@@ -418,5 +543,110 @@ mod tests {
         assert_eq!(range.start.character, 0);
         assert_eq!(range.end.line, 1);
         assert_eq!(range.end.character, 5);
+    }
+
+    #[test]
+    fn test_snippet_at_normal() {
+        let text = "hello world";
+        assert_eq!(snippet_at(text, 0, 5), "hello");
+    }
+
+    #[test]
+    fn test_snippet_at_trims_whitespace() {
+        let text = "  hello  ";
+        assert_eq!(snippet_at(text, 0, 9), "hello");
+    }
+
+    #[test]
+    fn test_snippet_at_truncates_long_text() {
+        let text = "a".repeat(100);
+        let result = snippet_at(&text, 0, 100);
+        assert!(result.len() <= 63); // 57 chars + "..."
+        assert!(result.ends_with("..."));
+    }
+
+    #[test]
+    fn test_snippet_at_out_of_bounds() {
+        let text = "short";
+        assert_eq!(snippet_at(text, 0, 100), "short");
+    }
+
+    #[test]
+    fn test_snippet_at_empty_span() {
+        let text = "hello";
+        assert_eq!(snippet_at(text, 3, 3), "");
+    }
+
+    #[test]
+    fn test_error_message_unexpected_element_shows_tag() {
+        // <html> is not a valid MJML root element, mrml reports UnexpectedElement
+        let text = "<html><body>Hello</body></html>";
+        let diagnostics = validate_mjml(text);
+        assert!(!diagnostics.is_empty());
+        // The message should contain the offending text, not just byte offsets
+        assert!(
+            !diagnostics[0].message.contains("at position"),
+            "message should not contain raw byte offsets, got: {}",
+            diagnostics[0].message
+        );
+    }
+
+    #[test]
+    fn test_error_message_no_root_node() {
+        let text = "";
+        let diagnostics = validate_mjml(text);
+        assert!(!diagnostics.is_empty());
+        assert_eq!(diagnostics[0].message, "Missing `<mjml>` root element");
+    }
+
+    #[test]
+    fn test_error_message_end_of_stream() {
+        let text = "<mjml><mj-body>";
+        let diagnostics = validate_mjml(text);
+        assert!(!diagnostics.is_empty());
+        // EndOfStream should produce a helpful "unclosed tags" message
+        assert!(
+            diagnostics[0].message.contains("unclosed tags")
+                || diagnostics[0].message.contains("Unexpected"),
+            "EndOfStream message should mention unclosed tags, got: {}",
+            diagnostics[0].message
+        );
+    }
+
+    #[test]
+    fn test_find_parent_tag_simple() {
+        let text = "<mj-image src=\"x\">some text";
+        assert_eq!(find_parent_tag(text, 18), Some("mj-image".to_string()));
+    }
+
+    #[test]
+    fn test_find_parent_tag_skips_closing_tag() {
+        let text = "<mj-section></mj-section><mj-image>text";
+        assert_eq!(find_parent_tag(text, 34), Some("mj-image".to_string()));
+    }
+
+    #[test]
+    fn test_find_parent_tag_skips_comment() {
+        let text = "<mj-column><!-- comment --><mj-image>text";
+        assert_eq!(find_parent_tag(text, 36), Some("mj-image".to_string()));
+    }
+
+    #[test]
+    fn test_find_parent_tag_none_when_no_tag() {
+        let text = "just plain text";
+        assert_eq!(find_parent_tag(text, 5), None);
+    }
+
+    #[test]
+    fn test_error_message_unexpected_token_shows_parent() {
+        // mj-image should not contain text children — mrml reports UnexpectedToken
+        let text = "<mjml><mj-body><mj-section><mj-column><mj-image src=\"x\">bad text</mj-image></mj-column></mj-section></mj-body></mjml>";
+        let diagnostics = validate_mjml(text);
+        assert!(!diagnostics.is_empty());
+        assert!(
+            diagnostics[0].message.contains("mj-image"),
+            "message should mention the parent element, got: {}",
+            diagnostics[0].message
+        );
     }
 }
