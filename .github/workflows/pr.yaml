@@ -1,0 +1,68 @@
+name: PR validation
+run-name: ${{ github.actor }} is running PR validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - '!release-please--branches--main'
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - .release-please-manifest.json
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  cancel-in-progress: true
+  group: '${{ github.workflow }} @ ${{ github.ref }}'
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set environment and install dependencies
+        uses: ./.github/actions/prepare
+
+      - name: Linting LSP
+        shell: bash
+        run: |
+          cargo clippy -- -D warnings
+
+      - name: Linting LSP
+        working-directory: crates/mjml-lsp
+        shell: bash
+        run: |
+          cargo clippy -- -D warnings
+
+  unit-tests:
+    name: Unit tests (web)
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set environment and install dependencies
+        uses: ./.github/actions/prepare
+
+      - name: Run unit tests (web)
+        shell: bash
+        run: cargo test
