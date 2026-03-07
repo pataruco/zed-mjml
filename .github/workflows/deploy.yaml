@@ -1,9 +1,13 @@
-name: Release
-
+name: Deploy
+run-name: ${{ github.actor }} is deploying to Google Cloud Run with tag ${{ github.event.inputs.tag }}
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Select the server tag to deploy"
+        required: true
+        type: string
+        default: "zed-mjml-v0.1.0"
 
 permissions:
   contents: write
@@ -23,25 +27,26 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/prepare
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build mjml-lsp
+      - name: 🔨 Build mjml-lsp
         env:
           BUILD_TARGET: ${{ matrix.target }}
         run: cargo build --release --manifest-path crates/mjml-lsp/Cargo.toml --target "$BUILD_TARGET"
 
-      - name: Package binary
+      - name: 📦 Package binary
         env:
           BUILD_TARGET: ${{ matrix.target }}
         run: |
           cd "crates/mjml-lsp/target/${BUILD_TARGET}/release"
           gzip -c mjml-lsp > "mjml-lsp-${BUILD_TARGET}.gz"
 
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: crates/mjml-lsp/target/${{ matrix.target }}/release/mjml-lsp-${{ matrix.target }}.gz
+      - name: 🚀 Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_TARGET: ${{ matrix.target }}
+        run: gh release upload "${{ inputs.tag }}" "crates/mjml-lsp/target/${BUILD_TARGET}/release/mjml-lsp-${BUILD_TARGET}.gz"

@@ -4,6 +4,7 @@ pub struct TagInfo {
     pub name: String,
     /// Byte range of the full opening tag (from `<` to `>`).
     pub tag_span: (usize, usize),
+    #[cfg_attr(not(test), expect(dead_code))]
     pub self_closing: bool,
     pub attributes: Vec<AttrInfo>,
     /// Index into the `Vec<TagInfo>` of the parent opening tag, if any.
@@ -14,8 +15,10 @@ pub struct TagInfo {
 #[derive(Debug, Clone)]
 pub struct AttrInfo {
     pub name: String,
+    #[cfg_attr(not(test), expect(dead_code))]
     pub value: Option<String>,
     /// Byte range of the attribute name in the source.
+    #[cfg_attr(not(test), expect(dead_code))]
     pub name_span: (usize, usize),
 }
 
@@ -71,9 +74,8 @@ pub fn scan_tags(text: &str) -> Vec<TagInfo> {
         }
 
         // Find the closing '>'
-        let gt = match find_gt_skipping_strings(bytes, pos + 1 + tag_name.len()) {
-            Some(gt) => gt,
-            None => break,
+        let Some(gt) = find_gt_skipping_strings(bytes, pos + 1 + tag_name.len()) else {
+            break;
         };
 
         let self_closing = gt > 0 && bytes[gt - 1] == b'/';

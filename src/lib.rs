@@ -12,7 +12,7 @@ impl MjmlExtension {
     ) -> Result<String> {
         // If we have a cached path and the file still exists, return it.
         if let Some(ref path) = self.cached_binary_path {
-            if fs::metadata(path).map_or(false, |m| m.is_file()) {
+            if fs::metadata(path).is_ok_and(|m| m.is_file()) {
                 return Ok(path.clone());
             }
         }
@@ -62,7 +62,7 @@ impl MjmlExtension {
         let binary_path = format!("{version_dir}/mjml-lsp");
 
         // If the binary for this version already exists on disk, use it.
-        if fs::metadata(&binary_path).map_or(false, |m| m.is_file()) {
+        if fs::metadata(&binary_path).is_ok_and(|m| m.is_file()) {
             self.cached_binary_path = Some(binary_path.clone());
             return Ok(binary_path);
         }
@@ -89,7 +89,7 @@ impl MjmlExtension {
 
 impl zed::Extension for MjmlExtension {
     fn new() -> Self {
-        MjmlExtension {
+        Self {
             cached_binary_path: None,
         }
     }
@@ -103,7 +103,7 @@ impl zed::Extension for MjmlExtension {
         Ok(zed::Command {
             command: binary_path,
             args: vec!["--stdio".to_string()],
-            env: Default::default(),
+            env: Vec::default(),
         })
     }
 }

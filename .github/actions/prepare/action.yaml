@@ -1,0 +1,17 @@
+name: 'Install dependencies'
+description: 'Set environment and install dependencies'
+inputs:
+  targets:
+    description: 'Rust target triple(s) to install'
+    required: false
+    default: 'x86_64-unknown-linux-gnu'
+runs:
+  using: composite
+  steps:
+    - name: Install Rust 🦀
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.targets }}
+
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9

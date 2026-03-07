@@ -1,0 +1,30 @@
+name: Release
+run-name: ${{ github.actor }} is releasing
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release.yaml
+      - "**/CHANGELOG.md"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_GH_TOKEN }}

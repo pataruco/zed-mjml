@@ -366,7 +366,8 @@ fn byte_offset_to_position(text: &str, byte_offset: usize) -> Position {
         } else {
             // Count UTF-16 code units: characters in the Basic Multilingual Plane
             // take 1 code unit, supplementary characters take 2 (surrogate pair).
-            character += ch.len_utf16() as u32;
+            #[expect(clippy::cast_possible_truncation)]
+            { character += ch.len_utf16() as u32; }
         }
     }
 

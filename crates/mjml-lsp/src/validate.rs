@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::rules::{self, KNOWN_TAGS};
 use crate::scanner::TagInfo;
 
@@ -25,7 +27,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
     let mut head_count = 0u32;
     let mut body_count = 0u32;
 
-    for tag in tags.iter() {
+    for tag in tags {
         // Rule 4: Singleton enforcement
         if tag.name == "mj-head" {
             head_count += 1;
@@ -57,7 +59,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
         if tag.name.starts_with("mj-") && !KNOWN_TAGS.contains(tag.name.as_str()) {
             let mut msg = format!("Unknown MJML element <{}>", tag.name);
             if let Some(suggestion) = rules::suggest_tag(&tag.name) {
-                msg.push_str(&format!(" — did you mean <{suggestion}>?"));
+                let _ = write!(msg, " — did you mean <{suggestion}>?");
             }
             diagnostics.push(LintDiagnostic {
                 span: tag.tag_span,
@@ -70,10 +72,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
         // Rule 1: Nesting
         if let Some(allowed) = rules::allowed_parents(&tag.name) {
             let actual_parent = tag.parent_idx.map(|i| tags[i].name.as_str());
-            let is_valid = match actual_parent {
-                Some(parent_name) => allowed.contains(&parent_name),
-                None => false, // no parent means it's at root level (only "mjml" is valid there)
-            };
+            let is_valid = actual_parent.is_some_and(|parent_name| allowed.contains(&parent_name));
             // "mjml" has no parent entry in allowed_parents, so skip it
             if !is_valid && tag.name != "mjml" {
                 let parent_display = actual_parent.unwrap_or("document root");

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "rust",
+  "packages": {
+    ".": {
+      "component": "zed-mjml",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "extension.toml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "toml",
+          "path": "crates/mjml-lsp/Cargo.toml",
+          "jsonpath": "$.package.version"
+        }
+      ]
+    }
+  }
+}
