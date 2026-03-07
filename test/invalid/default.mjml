@@ -1,0 +1,42 @@
+<!-- Tests all 4 validation rules. Multiple errors should be reported. -->
+<mjml>
+  <mj-head>
+    <mj-title>Broken Email</mj-title>
+    <!-- Rule 2: mj-font missing required name and href -->
+    <mj-font />
+  </mj-head>
+  <mj-body>
+    <!-- Rule 1: mj-text must be inside mj-column, not mj-section -->
+    <mj-section>
+      <mj-text>Wrong parent</mj-text>
+    </mj-section>
+
+    <!-- Rule 1: mj-column must be inside mj-section, not mj-body -->
+    <mj-column>
+      <mj-text>Orphan column</mj-text>
+    </mj-column>
+
+    <!-- Rule 2: mj-image missing required src -->
+    <mj-section>
+      <mj-column>
+        <mj-image alt="No source" />
+      </mj-column>
+    </mj-section>
+
+    <!-- Rule 3: unknown mj-* tag (typo) -->
+    <mj-section>
+      <mj-column>
+        <mj-buton href="https://example.com">Click</mj-buton>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+
+  <!-- Rule 4: duplicate mj-body -->
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Second body</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

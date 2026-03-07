@@ -1,0 +1,36 @@
+<!-- Rule 4: Singleton violations -->
+<!-- mj-head and mj-body may only appear once -->
+<!-- Expected: "Duplicate" errors on the second occurrence of each -->
+<mjml>
+  <mj-head>
+    <mj-title>First head</mj-title>
+  </mj-head>
+  <!-- Duplicate mj-head -->
+  <mj-head>
+    <mj-title>Second head</mj-title>
+  </mj-head>
+
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>First body</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+  <!-- Duplicate mj-body -->
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Second body</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+  <!-- Triple mj-body -->
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Third body</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

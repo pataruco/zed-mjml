@@ -1,0 +1,171 @@
+<!-- Comprehensive valid MJML using most components -->
+<!-- Expected: ZERO diagnostics -->
+<mjml>
+  <mj-head>
+    <mj-title>Complete Valid Email</mj-title>
+    <mj-preview>This email exercises all components</mj-preview>
+    <mj-font name="Roboto" href="https://fonts.googleapis.com/css?family=Roboto:300,400,700" />
+    <mj-breakpoint width="600px" />
+    <mj-attributes>
+      <mj-all font-family="Roboto, Helvetica, sans-serif" />
+      <mj-class name="blue" color="#007bff" />
+      <mj-class name="big" font-size="24px" />
+    </mj-attributes>
+    <mj-style>
+      .header { background-color: #f4f4f4; }
+      .footer a { color: #888888; text-decoration: none; }
+    </mj-style>
+    <mj-style inline="inline">
+      .link-nostyle { color: inherit; text-decoration: none; }
+    </mj-style>
+    <mj-raw>
+      <!-- Conditional comment for Outlook -->
+      <!--[if mso]><style>.outlook-fix { width: 100%; }</style><![endif]-->
+    </mj-raw>
+  </mj-head>
+  <mj-body background-color="#ffffff">
+    <!-- Hero section -->
+    <mj-hero mode="fixed" background-height="469px" background-width="600px" background-url="https://example.com/hero.jpg" padding="100px 0px">
+      <mj-text align="center" font-size="36px" color="#ffffff">Welcome</mj-text>
+      <mj-button href="https://example.com" background-color="#ffffff" color="#007bff">Get Started</mj-button>
+    </mj-hero>
+
+    <!-- Wrapper section -->
+    <mj-wrapper background-color="#f0f0f0" padding="20px">
+      <mj-section>
+        <mj-column>
+          <mj-text font-size="20px" font-weight="bold">Inside a wrapper</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Multi-column layout -->
+    <mj-section padding="20px">
+      <mj-column width="33.33%">
+        <mj-image src="https://example.com/icon1.png" width="64px" />
+        <mj-text align="center">Feature 1</mj-text>
+      </mj-column>
+      <mj-column width="33.33%">
+        <mj-image src="https://example.com/icon2.png" width="64px" />
+        <mj-text align="center">Feature 2</mj-text>
+      </mj-column>
+      <mj-column width="33.33%">
+        <mj-image src="https://example.com/icon3.png" width="64px" />
+        <mj-text align="center">Feature 3</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Grouped columns -->
+    <mj-section>
+      <mj-group>
+        <mj-column>
+          <mj-text>Grouped left</mj-text>
+        </mj-column>
+        <mj-column>
+          <mj-text>Grouped right</mj-text>
+        </mj-column>
+      </mj-group>
+    </mj-section>
+
+    <!-- Content elements -->
+    <mj-section>
+      <mj-column>
+        <mj-text font-size="16px" line-height="1.5">
+          <p>This is a paragraph with <strong>bold</strong> and <em>italic</em> text.</p>
+          <p>HTML content inside mj-text is perfectly valid.</p>
+        </mj-text>
+        <mj-divider border-color="#eeeeee" border-width="1px" />
+        <mj-spacer height="20px" />
+        <mj-button href="https://example.com" background-color="#007bff" border-radius="4px">
+          Primary Action
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Table -->
+    <mj-section>
+      <mj-column>
+        <mj-table>
+          <tr>
+            <th>Item</th>
+            <th>Price</th>
+          </tr>
+          <tr>
+            <td>Widget</td>
+            <td>$9.99</td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+
+    <!-- Accordion -->
+    <mj-section>
+      <mj-column>
+        <mj-accordion>
+          <mj-accordion-element>
+            <mj-accordion-title>Question 1</mj-accordion-title>
+            <mj-accordion-text>Answer to question 1</mj-accordion-text>
+          </mj-accordion-element>
+          <mj-accordion-element>
+            <mj-accordion-title>Question 2</mj-accordion-title>
+            <mj-accordion-text>Answer to question 2</mj-accordion-text>
+          </mj-accordion-element>
+        </mj-accordion>
+      </mj-column>
+    </mj-section>
+
+    <!-- Carousel -->
+    <mj-section>
+      <mj-column>
+        <mj-carousel>
+          <mj-carousel-image src="https://example.com/slide1.png" />
+          <mj-carousel-image src="https://example.com/slide2.png" />
+          <mj-carousel-image src="https://example.com/slide3.png" />
+        </mj-carousel>
+      </mj-column>
+    </mj-section>
+
+    <!-- Navbar -->
+    <mj-section>
+      <mj-column>
+        <mj-navbar>
+          <mj-navbar-link href="/home">Home</mj-navbar-link>
+          <mj-navbar-link href="/about">About</mj-navbar-link>
+          <mj-navbar-link href="/contact">Contact</mj-navbar-link>
+        </mj-navbar>
+      </mj-column>
+    </mj-section>
+
+    <!-- Social -->
+    <mj-section>
+      <mj-column>
+        <mj-social font-size="12px" icon-size="20px" mode="horizontal" align="center">
+          <mj-social-element name="twitter" href="https://twitter.com/example" />
+          <mj-social-element name="github" href="https://github.com/example" />
+          <mj-social-element name="linkedin" href="https://linkedin.com/company/example" />
+        </mj-social>
+      </mj-column>
+    </mj-section>
+
+    <!-- Raw HTML -->
+    <mj-section>
+      <mj-column>
+        <mj-raw>
+          <div style="text-align: center; font-size: 11px; color: #999;">
+            You received this email because you signed up at example.com
+          </div>
+        </mj-raw>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section>
+      <mj-column>
+        <mj-divider border-color="#eeeeee" />
+        <mj-text font-size="11px" color="#888888" align="center">
+          &copy; 2026 Example Inc. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
