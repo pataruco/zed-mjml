@@ -1,0 +1,6 @@
+<!-- Error: malformed XML syntax -->
+<mjml>
+  <mj-body>
+    <<<this is not valid XML>>>
+  </mj-body>
+</mjml>

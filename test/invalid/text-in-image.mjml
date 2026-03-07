@@ -1,0 +1,12 @@
+<!-- Error: mj-image is a void element and cannot contain text -->
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-image src="https://example.com/img.png">
+          Images cannot have text content
+        </mj-image>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

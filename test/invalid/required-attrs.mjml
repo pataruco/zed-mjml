@@ -1,0 +1,49 @@
+<!-- Rule 2: Missing required attributes -->
+<!-- Every element below is missing one or more required attributes. -->
+<!-- Expected: multiple "missing required attribute" warnings -->
+<mjml>
+  <mj-head>
+    <!-- mj-font requires "name" and "href" — both missing -->
+    <mj-font />
+
+    <!-- mj-font with only name — missing "href" -->
+    <mj-font name="Roboto" />
+
+    <!-- mj-font with only href — missing "name" -->
+    <mj-font href="https://fonts.googleapis.com/css?family=Roboto" />
+
+    <!-- mj-breakpoint requires "width" -->
+    <mj-breakpoint />
+
+    <!-- mj-class requires "name" -->
+    <mj-attributes>
+      <mj-class color="#ff0000" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <!-- mj-image requires "src" -->
+        <mj-image alt="Missing source" />
+      </mj-column>
+    </mj-section>
+
+    <mj-section>
+      <mj-column>
+        <!-- mj-social-element requires "name" -->
+        <mj-social>
+          <mj-social-element href="https://twitter.com" />
+        </mj-social>
+      </mj-column>
+    </mj-section>
+
+    <mj-section>
+      <mj-column>
+        <mj-carousel>
+          <!-- mj-carousel-image requires "src" -->
+          <mj-carousel-image alt="No source" />
+        </mj-carousel>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

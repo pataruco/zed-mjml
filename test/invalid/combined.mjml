@@ -1,0 +1,44 @@
+<!-- All 4 rules violated in a single document -->
+<!-- Expected: errors and warnings from every category -->
+<mjml>
+  <mj-head>
+    <!-- Rule 2: mj-font missing name and href -->
+    <mj-font />
+    <!-- Rule 3: unknown tag (typo) -->
+    <mj-stye>.red { color: red; }</mj-stye>
+  </mj-head>
+  <mj-body>
+    <!-- Rule 1: mj-text directly in mj-section -->
+    <mj-section>
+      <mj-text>No column wrapper</mj-text>
+    </mj-section>
+
+    <!-- Rule 1 + Rule 2: mj-image in wrong parent AND missing src -->
+    <mj-section>
+      <mj-image alt="Doubly wrong" />
+    </mj-section>
+
+    <!-- Rule 1: mj-column in mj-body -->
+    <mj-column>
+      <!-- Rule 3: unknown tag -->
+      <mj-spcer />
+    </mj-column>
+
+    <!-- Valid section for contrast — should produce no errors -->
+    <mj-section>
+      <mj-column>
+        <mj-text font-size="16px">This part is correct</mj-text>
+        <mj-image src="https://example.com/valid.png" />
+        <mj-button href="https://example.com">Valid button</mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+  <!-- Rule 4: duplicate mj-body -->
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Duplicate body</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
