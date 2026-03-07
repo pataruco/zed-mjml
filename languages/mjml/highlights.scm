@@ -4,7 +4,8 @@
 
 ; MJML head configuration tags — highlighted as types
 ((tag_name) @type
-  (#match? @type "^(mj-attributes|mj-all|mj-class|mj-breakpoint|mj-font|mj-html-attributes|mj-preview|mj-style|mj-title)$"))
+  (#match? @type
+    "^(mj-attributes|mj-all|mj-class|mj-breakpoint|mj-font|mj-html-attributes|mj-preview|mj-style|mj-title)$"))
 
 ; Fallback: all other tag names (layout, content, interactive MJML tags and standard HTML)
 (tag_name) @tag
