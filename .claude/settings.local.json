@@ -14,7 +14,9 @@
       "Bash(cargo build)",
       "Bash(cargo test)",
       "Bash(cargo run)",
-      "WebFetch(domain:)"
+      "WebFetch(domain:)",
+      "Bash(cargo test --manifest-path crates/mjml-lsp/Cargo.toml)",
+      "Bash(cargo build --manifest-path crates/mjml-lsp/Cargo.toml)"
     ]
   }
 }
