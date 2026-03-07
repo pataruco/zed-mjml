@@ -48,6 +48,5 @@ jobs:
       - name: 🚀 Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ inputs.tag }}
           BUILD_TARGET: ${{ matrix.target }}
-        run: gh release upload "$TAG_NAME" "crates/mjml-lsp/target/${BUILD_TARGET}/release/mjml-lsp-${BUILD_TARGET}.gz"
+        run: gh release upload "${{ inputs.tag }}" "crates/mjml-lsp/target/${BUILD_TARGET}/release/mjml-lsp-${BUILD_TARGET}.gz"
