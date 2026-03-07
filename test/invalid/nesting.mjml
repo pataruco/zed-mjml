@@ -1,0 +1,71 @@
+<!-- Rule 1: Nesting violations -->
+<!-- Every mj-* element below is in the WRONG parent. -->
+<!-- Expected: multiple "must be inside" errors -->
+<mjml>
+  <mj-body>
+
+    <!-- mj-text directly in mj-section (should be in mj-column) -->
+    <mj-section>
+      <mj-text>I need a column wrapper</mj-text>
+    </mj-section>
+
+    <!-- mj-image directly in mj-section (should be in mj-column) -->
+    <mj-section>
+      <mj-image src="https://example.com/img.png" />
+    </mj-section>
+
+    <!-- mj-button directly in mj-section (should be in mj-column) -->
+    <mj-section>
+      <mj-button href="https://example.com">Click me</mj-button>
+    </mj-section>
+
+    <!-- mj-divider directly in mj-body (should be in mj-column) -->
+    <mj-divider />
+
+    <!-- mj-column directly in mj-body (should be in mj-section) -->
+    <mj-column>
+      <mj-text>Orphan column</mj-text>
+    </mj-column>
+
+    <!-- mj-section inside mj-section (should be in mj-body) -->
+    <mj-section>
+      <mj-section>
+        <mj-column>
+          <mj-text>Nested section</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-section>
+
+    <!-- mj-social-element outside mj-social -->
+    <mj-section>
+      <mj-column>
+        <mj-social-element name="twitter" href="https://twitter.com" />
+      </mj-column>
+    </mj-section>
+
+    <!-- mj-carousel-image outside mj-carousel -->
+    <mj-section>
+      <mj-column>
+        <mj-carousel-image src="https://example.com/slide.png" />
+      </mj-column>
+    </mj-section>
+
+    <!-- mj-navbar-link outside mj-navbar -->
+    <mj-section>
+      <mj-column>
+        <mj-navbar-link href="/about">About</mj-navbar-link>
+      </mj-column>
+    </mj-section>
+
+    <!-- mj-accordion-element outside mj-accordion -->
+    <mj-section>
+      <mj-column>
+        <mj-accordion-element>
+          <mj-accordion-title>Title</mj-accordion-title>
+          <mj-accordion-text>Text</mj-accordion-text>
+        </mj-accordion-element>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

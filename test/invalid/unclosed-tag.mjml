@@ -1,0 +1,8 @@
+<!-- Error: unclosed <mj-section> tag — triggers EndOfStream -->
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>This section is never closed</mj-text>
+      </mj-column>
+</mjml>

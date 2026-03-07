@@ -1,0 +1,47 @@
+<!-- Rule 3: Unknown mj-* tags (typos and invented elements) -->
+<!-- Expected: multiple "Unknown MJML element" warnings with "did you mean?" suggestions -->
+<mjml>
+  <mj-head>
+    <!-- typo: mj-ttle instead of mj-title -->
+    <mj-ttle>Welcome</mj-ttle>
+
+    <!-- typo: mj-prevew instead of mj-preview -->
+    <mj-prevew>Preview text</mj-prevew>
+
+    <!-- typo: mj-atributes instead of mj-attributes -->
+    <mj-atributes>
+      <mj-all font-family="Arial" />
+    </mj-atributes>
+  </mj-head>
+  <mj-body>
+    <!-- typo: mj-seciton instead of mj-section -->
+    <mj-seciton>
+      <mj-column>
+        <mj-text>Misspelled section</mj-text>
+      </mj-column>
+    </mj-seciton>
+
+    <mj-section>
+      <!-- typo: mj-colum instead of mj-column -->
+      <mj-colum>
+        <mj-text>Misspelled column</mj-text>
+      </mj-colum>
+    </mj-section>
+
+    <mj-section>
+      <mj-column>
+        <!-- typo: mj-buton instead of mj-button -->
+        <mj-buton href="https://example.com">Click</mj-buton>
+
+        <!-- typo: mj-imge instead of mj-image -->
+        <mj-imge src="https://example.com/photo.png" />
+
+        <!-- totally invented: mj-paragraph (no close match) -->
+        <mj-paragraph>This element does not exist</mj-paragraph>
+
+        <!-- typo: mj-dvider instead of mj-divider -->
+        <mj-dvider />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
