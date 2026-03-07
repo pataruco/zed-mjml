@@ -5,12 +5,13 @@ A [Zed](https://zed.dev) extension that adds language support for [MJML](https:/
 ## Features
 
 - Syntax highlighting — MJML structural tags (`mjml`, `mj-head`, `mj-body`) are visually distinct from layout and content tags
-- Bracket matching — Navigate between opening and closing MJML tags
+- Bracket matching — Navigate between opening and closing MJML tags.
 - Auto-indentation — Smart indentation for nested MJML elements
 - Comment toggling — `Cmd+/` toggles `<!-- -->` HTML comments
 - Document outline — `Cmd+Shift+O` to navigate MJML structure
 - CSS injection — Syntax highlighting for CSS inside `<mj-style>` blocks and inline `style` attributes
 - Word-aware navigation — Hyphenated tag names like `mj-section` are treated as single words for selection and navigation
+- Diagnostics — Real-time error reporting via the built-in MJML language server (powered by [mrml](https://github.com/jdrouet/mrml))
 
 ## Supported Tags
 
