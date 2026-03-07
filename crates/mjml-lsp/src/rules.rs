@@ -54,8 +54,7 @@ pub fn required_attributes(tag: &str) -> Option<&'static [&'static str]> {
         "mj-image" | "mj-carousel-image" => Some(&["src"]),
         "mj-font" => Some(&["name", "href"]),
         "mj-breakpoint" => Some(&["width"]),
-        "mj-class" => Some(&["name"]),
-        "mj-social-element" => Some(&["name"]),
+        "mj-class" | "mj-social-element" => Some(&["name"]),
         _ => None,
     }
 }
@@ -67,12 +66,10 @@ pub fn suggest_tag(tag: &str) -> Option<&'static str> {
         return None; // exact match, no suggestion needed
     }
     let mut best: Option<(&str, usize)> = None;
-    for &known in KNOWN_TAGS.iter() {
+    for &known in &*KNOWN_TAGS {
         let d = edit_distance(tag, known);
-        if d <= 2 {
-            if best.is_none() || d < best.unwrap().1 {
-                best = Some((known, d));
-            }
+        if d <= 2 && (best.is_none() || d < best.unwrap().1) {
+            best = Some((known, d));
         }
     }
     best.map(|(tag, _)| tag)
@@ -83,11 +80,15 @@ fn edit_distance(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
     let mut dp = vec![vec![0usize; b.len() + 1]; a.len() + 1];
-    for i in 0..=a.len() { dp[i][0] = i; }
-    for j in 0..=b.len() { dp[0][j] = j; }
+    for (i, row) in dp.iter_mut().enumerate() {
+        row[0] = i;
+    }
+    for (j, val) in dp[0].iter_mut().enumerate() {
+        *val = j;
+    }
     for i in 1..=a.len() {
         for j in 1..=b.len() {
-            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            let cost = usize::from(a[i - 1] != b[j - 1]);
             dp[i][j] = (dp[i - 1][j] + 1)
                 .min(dp[i][j - 1] + 1)
                 .min(dp[i - 1][j - 1] + cost);
