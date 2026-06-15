@@ -124,6 +124,30 @@ For language definition changes (`.scm` files), reload the extension:
 3. Test manually with files in the `test/` folder
 4. Open a pull request with a clear description of what changed and why
 
+## Releasing
+
+Releases are managed with [release-please](https://github.com/googleapis/release-please) plus a manual binary build. The version in `Cargo.toml`, `extension.toml`, and `crates/mjml-lsp/Cargo.toml` is kept in sync automatically, and it must match the version published to the Zed registry.
+
+1. **Land changes on `main` using [Conventional Commits](https://www.conventionalcommits.org)** (`feat:`, `fix:`, etc.). These determine the next version number.
+
+2. **Merge the release-please PR.** release-please opens and continuously updates a "release" pull request that bumps the version across `Cargo.toml`, `extension.toml`, and `crates/mjml-lsp/Cargo.toml`, and updates `CHANGELOG.md`. Merging it creates the `zed-mjml-v<version>` tag and a matching GitHub release.
+
+3. **Build and upload the language server binaries.** From the Actions tab, run the **Deploy** workflow (`.github/workflows/deploy.yaml`) and pass the new tag (e.g. `zed-mjml-v0.1.0`). It cross-compiles `mjml-lsp` and uploads one `mjml-lsp-<target>.gz` asset per platform to the release:
+   - `aarch64-apple-darwin`
+   - `x86_64-apple-darwin`
+   - `x86_64-unknown-linux-gnu`
+
+   This step is required: `src/lib.rs` downloads these assets from the latest GitHub release at install time, so the release must carry them before anyone installs the new version.
+
+4. **Update the Zed extension registry.** Open a pull request against [`zed-industries/extensions`](https://github.com/zed-industries/extensions):
+   - Update the `extensions/mjml` submodule to the released commit.
+   - Set the `version` for `[mjml]` in `extensions.toml` to match `extension.toml`.
+   - Run `pnpm sort-extensions` to keep `extensions.toml` and `.gitmodules` sorted.
+
+   Once the PR is merged, Zed packages and publishes the new version.
+
+> If you later want to automate step 4, the community [`huacnlee/zed-extension-action`](https://github.com/huacnlee/zed-extension-action) can open the registry PR for you on tag push.
+
 ## Resources
 
 - [Zed Extension Documentation](https://zed.dev/docs/extensions)
