@@ -224,7 +224,7 @@ fn attr_items(tag: &str, present: &[String], range: Range) -> Vec<CompletionItem
         .map(|a| CompletionItem {
             label: a.name.to_string(),
             kind: Some(CompletionItemKind::FIELD),
-            detail: Some(type_label(a.ty)),
+            detail: Some(a.ty.label()),
             documentation: Some(attr_doc(a)),
             insert_text_format: Some(InsertTextFormat::SNIPPET),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
@@ -276,17 +276,6 @@ fn attr_doc(a: &AttrSpec) -> Documentation {
         kind: MarkupKind::Markdown,
         value,
     })
-}
-
-fn type_label(ty: AttrType) -> String {
-    match ty {
-        AttrType::Text => "text".to_string(),
-        AttrType::Color => "color".to_string(),
-        AttrType::Measure => "measure".to_string(),
-        AttrType::Url => "url".to_string(),
-        AttrType::Boolean => "boolean".to_string(),
-        AttrType::Enum(values) => values.join(" | "),
-    }
 }
 
 #[cfg(test)]

@@ -19,6 +19,20 @@ pub enum AttrType {
     Boolean,
 }
 
+impl AttrType {
+    /// A short, human-readable label for the value type (used by completion and hover).
+    pub fn label(self) -> String {
+        match self {
+            Self::Text => "text".to_string(),
+            Self::Color => "color".to_string(),
+            Self::Measure => "measure".to_string(),
+            Self::Url => "url".to_string(),
+            Self::Boolean => "boolean".to_string(),
+            Self::Enum(values) => values.join(" | "),
+        }
+    }
+}
+
 /// Describes a single attribute of an MJML component.
 #[derive(Debug, Clone, Copy)]
 pub struct AttrSpec {
