@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.1.0...zed-mjml-v0.2.0) (2026-06-16)
+
+
+### Features
+
+* add completion support ([c9ef3c0](https://github.com/pataruco/zed-mjml/commit/c9ef3c0adbbfc3af4f12b9f83256a43bcbf592d1))
+* add completion support ([67948e1](https://github.com/pataruco/zed-mjml/commit/67948e1df3dde06d3f3cb46750c6dacbc2a9b0eb))
+* add quick fixes for unknown tags and missing attributes ([56668ca](https://github.com/pataruco/zed-mjml/commit/56668cab5d1c07098d6337a2105167afed046e4a))
+* add snippets ([351373f](https://github.com/pataruco/zed-mjml/commit/351373fc495a0f2f966f6d3cb7718290187e36f3))
+* complete all mjml attribute types ([8f61adb](https://github.com/pataruco/zed-mjml/commit/8f61adb06108a693862a26f96141623da119aa07))
+* complete all mjml attribute types ([e62373f](https://github.com/pataruco/zed-mjml/commit/e62373fc59c2fda4ab77a9fdcd4ee7dc4794a039))
+* hover and completion ([19d8011](https://github.com/pataruco/zed-mjml/commit/19d801122a72550add8f2d537097bf1ee0af1504))
+* hover and completion ([ffbad01](https://github.com/pataruco/zed-mjml/commit/ffbad019fa59b774b6566d5088942d936cef0150))
+
+
+### Bug Fixes
+
+* managing multiple versions ([f9085c2](https://github.com/pataruco/zed-mjml/commit/f9085c2027746f4990f359ce321bff84c9bdec05))
+
 ## 0.1.0 (2026-03-07)
 
 
