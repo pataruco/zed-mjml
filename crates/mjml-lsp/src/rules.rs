@@ -23,12 +23,9 @@ pub enum AttrType {
 #[derive(Debug, Clone, Copy)]
 pub struct AttrSpec {
     pub name: &'static str,
-    #[cfg_attr(not(test), expect(dead_code))]
     pub ty: AttrType,
-    #[cfg_attr(not(test), expect(dead_code))]
     pub default: Option<&'static str>,
     pub required: bool,
-    #[cfg_attr(not(test), expect(dead_code))]
     pub doc: &'static str,
 }
 
@@ -36,9 +33,7 @@ pub struct AttrSpec {
 #[derive(Debug, Clone, Copy)]
 pub struct ComponentSpec {
     pub name: &'static str,
-    #[cfg_attr(not(test), expect(dead_code))]
     pub doc: &'static str,
-    #[cfg_attr(not(test), expect(dead_code))]
     pub docs_url: &'static str,
     /// Whether the tag has a closing tag (`true`) or is self-closing (`false`).
     #[cfg_attr(not(test), expect(dead_code))]
@@ -1610,7 +1605,6 @@ pub fn allowed_parents(tag: &str) -> Option<&'static [&'static str]> {
 }
 
 /// Returns the names of components that may appear directly inside `parent`.
-#[cfg_attr(not(test), expect(dead_code))]
 pub fn allowed_children(parent: &str) -> Vec<&'static str> {
     COMPONENTS
         .iter()
@@ -1633,7 +1627,6 @@ pub fn required_attributes(tag: &str) -> Vec<&'static str> {
 }
 
 /// Returns the spec for attribute `attr` on `tag`, if known.
-#[cfg_attr(not(test), expect(dead_code))]
 pub fn attribute(tag: &str, attr: &str) -> Option<&'static AttrSpec> {
     component(tag).and_then(|c| c.attributes.iter().find(|a| a.name == attr))
 }
