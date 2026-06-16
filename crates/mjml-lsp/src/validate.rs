@@ -10,6 +10,14 @@ pub enum Severity {
     Warning,
 }
 
+/// An automatic fix for a lint diagnostic.
+#[derive(Debug, Clone)]
+pub struct LintFix {
+    pub title: String,
+    /// Byte-span replacements to apply. A zero-width span inserts text.
+    pub edits: Vec<((usize, usize), String)>,
+}
+
 /// A lint diagnostic produced by the tag validator.
 #[derive(Debug, Clone)]
 pub struct LintDiagnostic {
@@ -17,6 +25,7 @@ pub struct LintDiagnostic {
     pub span: (usize, usize),
     pub severity: Severity,
     pub message: String,
+    pub fix: Option<LintFix>,
 }
 
 /// Validates a list of scanned tags against MJML rules.
@@ -37,6 +46,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
                     severity: Severity::Error,
                     message: "Duplicate <mj-head> — only one <mj-head> is allowed per document"
                         .to_string(),
+                    fix: None,
                 });
             }
         }
@@ -48,6 +58,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
                     severity: Severity::Error,
                     message: "Duplicate <mj-body> — only one <mj-body> is allowed per document"
                         .to_string(),
+                    fix: None,
                 });
             }
         }
@@ -60,13 +71,20 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
         // Rule 3: Unknown mj-* tag
         if tag.name.starts_with("mj-") && !KNOWN_TAGS.contains(tag.name.as_str()) {
             let mut msg = format!("Unknown MJML element <{}>", tag.name);
-            if let Some(suggestion) = rules::suggest_tag(&tag.name) {
+            let fix = rules::suggest_tag(&tag.name).map(|suggestion| {
                 let _ = write!(msg, " — did you mean <{suggestion}>?");
-            }
+                let name_start = tag.tag_span.0 + 1;
+                let name_end = name_start + tag.name.len();
+                LintFix {
+                    title: format!("Replace with <{suggestion}>"),
+                    edits: vec![((name_start, name_end), suggestion.to_string())],
+                }
+            });
             diagnostics.push(LintDiagnostic {
                 span: tag.tag_span,
                 severity: Severity::Warning,
                 message: msg,
+                fix,
             });
             continue; // skip nesting/attr checks for unknown tags
         }
@@ -90,6 +108,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
                         "<{}> must be inside {}, but found inside <{}>",
                         tag.name, expected, parent_display
                     ),
+                    fix: None,
                 });
             }
         }
@@ -100,6 +119,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
             let present: Vec<&str> = tag.attributes.iter().map(|a| a.name.as_str()).collect();
             for attr_name in required {
                 if !present.contains(&attr_name) {
+                    let insert_at = tag.tag_span.0 + 1 + tag.name.len();
                     diagnostics.push(LintDiagnostic {
                         span: tag.tag_span,
                         severity: Severity::Warning,
@@ -107,6 +127,10 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
                             "<{}> is missing required attribute \"{}\"",
                             tag.name, attr_name
                         ),
+                        fix: Some(LintFix {
+                            title: format!("Add required attribute \"{attr_name}\""),
+                            edits: vec![((insert_at, insert_at), format!(" {attr_name}=\"\""))],
+                        }),
                     });
                 }
             }
@@ -266,5 +290,33 @@ mod tests {
             "mj-font requires name and href, got {} warnings",
             attr_diags.len()
         );
+    }
+
+    #[test]
+    fn test_unknown_tag_has_replace_fix() {
+        let diags = validate("<mjml><mj-body><mj-section><mj-column><mj-seciton /></mj-column></mj-section></mj-body></mjml>");
+        let d = diags
+            .iter()
+            .find(|d| d.message.contains("Unknown"))
+            .expect("should report the unknown tag");
+        let fix = d.fix.as_ref().expect("unknown tag should carry a fix");
+        assert!(fix.title.contains("mj-section"));
+        assert_eq!(fix.edits.len(), 1);
+        assert_eq!(fix.edits[0].1, "mj-section");
+    }
+
+    #[test]
+    fn test_missing_attr_has_insert_fix() {
+        let diags = validate("<mjml><mj-body><mj-section><mj-column><mj-image alt=\"x\" /></mj-column></mj-section></mj-body></mjml>");
+        let d = diags
+            .iter()
+            .find(|d| d.message.contains("src"))
+            .expect("should report the missing src");
+        let fix = d
+            .fix
+            .as_ref()
+            .expect("missing attribute should carry a fix");
+        assert_eq!(fix.edits.len(), 1);
+        assert_eq!(fix.edits[0].1, " src=\"\"");
     }
 }
