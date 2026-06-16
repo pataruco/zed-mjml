@@ -20,6 +20,7 @@ A [Zed](https://zed.dev) extension that adds language support for [MJML](https:/
   - **Unknown tag detection** — Flags unknown `mj-*` elements with "did you mean?" suggestions for typos
   - **Singleton enforcement** — Errors on duplicate `<mj-head>` or `<mj-body>` elements
   - **Structural errors** — Reports XML syntax errors, unclosed tags, and missing root elements
+- Quick fixes — One-click code actions for fixable diagnostics: replace an unknown `mj-*` tag with its suggested correction, or insert a missing required attribute (e.g. `src` on `<mj-image>`)
 - Completions — Context-aware suggestions for tags (valid children ranked first), attributes, and enumerated attribute values
 - Hover documentation — Component and attribute docs with a link to the MJML reference, shown on hover
 - Snippets — Shorthand prefixes like `mjsection`, `mjimage`, and `mjml` expand to full MJML elements with tab stops

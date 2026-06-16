@@ -31,6 +31,7 @@ zed-mjml/
 │           ├── scanner.rs          # Lightweight tag scanner with byte positions
 │           ├── completion.rs       # Tag, attribute, and value completion
 │           ├── hover.rs            # Tag and attribute hover documentation
+│           ├── code_action.rs      # Quick fixes (turns diagnostics into edits)
 │           ├── validate.rs         # Validation rules engine (4 rules)
 │           └── tests.rs            # Integration tests for the LSP
 ├── languages/
@@ -91,7 +92,11 @@ The validation logic is split across three modules in `crates/mjml-lsp/src/`:
 
 - **`rules.rs`** — MJML specification data (known tags, allowed parents, required attributes, typo suggestions via Levenshtein distance)
 - **`scanner.rs`** — Byte-level tag scanner that extracts `TagInfo` structs with attributes and parent-child relationships
-- **`validate.rs`** — Walks scanned tags and produces `LintDiagnostic` results for 4 rules: nesting, required attributes, unknown tags, and singleton enforcement
+- **`validate.rs`** — Walks scanned tags and produces `LintDiagnostic` results for 4 rules: nesting, required attributes, unknown tags, and singleton enforcement. Fixable diagnostics (unknown tag, missing required attribute) also carry an optional `LintFix`.
+
+Quick fixes are handled separately:
+
+- **`code_action.rs`** — Turns the `LintFix` embedded in a diagnostic into a `WorkspaceEdit` when the editor requests a code action
 
 ## Testing
 
