@@ -3,6 +3,7 @@
 #![allow(clippy::mutable_key_type)]
 
 mod completion;
+mod hover;
 mod rules;
 mod scanner;
 mod validate;
@@ -12,15 +13,15 @@ use std::error::Error;
 
 use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::notification::Notification as _;
-use lsp_types::request::{Completion, Request as _};
+use lsp_types::request::{Completion, HoverRequest, Request as _};
 use lsp_types::{
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, PublishDiagnostics,
     },
     CompletionOptions, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams,
-    DidCloseTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, Position,
-    PublishDiagnosticsParams, Range, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, Uri,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, HoverProviderCapability,
+    InitializeParams, Position, PublishDiagnosticsParams, Range, ServerCapabilities,
+    TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -40,6 +41,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
             ]),
             ..Default::default()
         }),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..Default::default()
     };
 
@@ -68,6 +70,7 @@ fn main_loop(
                 }
                 let resp = match req.method.as_str() {
                     Completion::METHOD => completion::handle(&req, &documents),
+                    HoverRequest::METHOD => hover::handle(&req, &documents),
                     _ => Response::new_err(
                         req.id.clone(),
                         lsp_server::ErrorCode::MethodNotFound as i32,

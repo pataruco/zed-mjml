@@ -18,7 +18,6 @@ pub struct AttrInfo {
     #[cfg_attr(not(test), expect(dead_code))]
     pub value: Option<String>,
     /// Byte range of the attribute name in the source.
-    #[cfg_attr(not(test), expect(dead_code))]
     pub name_span: (usize, usize),
 }
 
@@ -145,7 +144,11 @@ fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<AttrInfo> {
 
         // Read attribute name
         let name_start = pos;
-        while pos < end && bytes[pos] != b'=' && !bytes[pos].is_ascii_whitespace() && bytes[pos] != b'/' {
+        while pos < end
+            && bytes[pos] != b'='
+            && !bytes[pos].is_ascii_whitespace()
+            && bytes[pos] != b'/'
+        {
             pos += 1;
         }
         if pos == name_start {
@@ -179,7 +182,11 @@ fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<AttrInfo> {
                 if pos < end {
                     pos += 1; // skip closing quote
                 }
-                attrs.push(AttrInfo { name, value: Some(value), name_span });
+                attrs.push(AttrInfo {
+                    name,
+                    value: Some(value),
+                    name_span,
+                });
             } else {
                 // Unquoted value
                 let val_start = pos;
@@ -187,11 +194,19 @@ fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<AttrInfo> {
                     pos += 1;
                 }
                 let value = String::from_utf8_lossy(&bytes[val_start..pos]).to_string();
-                attrs.push(AttrInfo { name, value: Some(value), name_span });
+                attrs.push(AttrInfo {
+                    name,
+                    value: Some(value),
+                    name_span,
+                });
             }
         } else {
             // Boolean attribute (no value)
-            attrs.push(AttrInfo { name, value: None, name_span });
+            attrs.push(AttrInfo {
+                name,
+                value: None,
+                name_span,
+            });
         }
     }
 
@@ -199,11 +214,15 @@ fn parse_attributes(bytes: &[u8], start: usize, end: usize) -> Vec<AttrInfo> {
 }
 
 fn memchr(needle: u8, haystack: &[u8], start: usize) -> Option<usize> {
-    haystack[start..].iter().position(|&b| b == needle).map(|i| start + i)
+    haystack[start..]
+        .iter()
+        .position(|&b| b == needle)
+        .map(|i| start + i)
 }
 
 fn find_bytes(haystack: &[u8], start: usize, needle: &[u8]) -> Option<usize> {
-    haystack[start..].windows(needle.len())
+    haystack[start..]
+        .windows(needle.len())
         .position(|w| w == needle)
         .map(|i| start + i)
 }
@@ -218,7 +237,9 @@ fn find_gt_skipping_strings(bytes: &[u8], start: usize) -> Option<usize> {
                 while pos < bytes.len() && bytes[pos] != quote {
                     pos += 1;
                 }
-                if pos < bytes.len() { pos += 1; }
+                if pos < bytes.len() {
+                    pos += 1;
+                }
             }
             b'>' => return Some(pos),
             _ => pos += 1,
@@ -278,7 +299,8 @@ mod tests {
 
     #[test]
     fn test_scan_skips_mj_style_content() {
-        let tags = scan_tags("<mjml><mj-head><mj-style>.foo { color: red; }</mj-style></mj-head></mjml>");
+        let tags =
+            scan_tags("<mjml><mj-head><mj-style>.foo { color: red; }</mj-style></mj-head></mjml>");
         // Should have mjml, mj-head, mj-style — but NOT parse CSS as tags
         assert_eq!(tags.len(), 3);
         assert_eq!(tags[2].name, "mj-style");
