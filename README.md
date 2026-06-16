@@ -20,6 +20,9 @@ A [Zed](https://zed.dev) extension that adds language support for [MJML](https:/
   - **Unknown tag detection** — Flags unknown `mj-*` elements with "did you mean?" suggestions for typos
   - **Singleton enforcement** — Errors on duplicate `<mj-head>` or `<mj-body>` elements
   - **Structural errors** — Reports XML syntax errors, unclosed tags, and missing root elements
+- Completions — Context-aware suggestions for tags (valid children ranked first), attributes, and enumerated attribute values
+- Hover documentation — Component and attribute docs with a link to the MJML reference, shown on hover
+- Snippets — Shorthand prefixes like `mjsection`, `mjimage`, and `mjml` expand to full MJML elements with tab stops
 
 ## Supported Tags
 
@@ -32,6 +35,21 @@ All standard MJML components are supported:
 | Layout      | `mj-section`, `mj-column`, `mj-group`, `mj-wrapper`                                                                           |
 | Content     | `mj-text`, `mj-button`, `mj-image`, `mj-divider`, `mj-spacer`, `mj-table`, `mj-raw`                                           |
 | Interactive | `mj-accordion`, `mj-carousel`, `mj-navbar`, `mj-social`, `mj-hero`                                                            |
+
+## Snippets
+
+Type a shorthand prefix and accept the completion to expand a full MJML element with tab stops. Prefixes follow an `mj<tag>` convention (no hyphen):
+
+| Prefix      | Expands to                                                                     |
+| ----------- | ------------------------------------------------------------------------------ |
+| `mjml`      | A complete document skeleton (`mjml` → `mj-body` → `mj-section` → `mj-column`) |
+| `mjsection` | `<mj-section>` wrapping an `<mj-column>`                                       |
+| `mjcolumn`  | `<mj-column>`                                                                  |
+| `mjimage`   | `<mj-image src="" alt="" />`                                                   |
+| `mjbutton`  | `<mj-button href="">…</mj-button>`                                             |
+| `mjtext`    | `<mj-text>`                                                                    |
+
+All common components have a snippet — see [`snippets/mjml.json`](snippets/mjml.json) for the full list.
 
 ## Installation
 

@@ -2,7 +2,9 @@
 // since its Hash/Eq implementation is based on the string value only.
 #![allow(clippy::mutable_key_type)]
 
+mod code_action;
 mod completion;
+mod hover;
 mod rules;
 mod scanner;
 mod validate;
@@ -12,15 +14,15 @@ use std::error::Error;
 
 use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::notification::Notification as _;
-use lsp_types::request::{Completion, Request as _};
+use lsp_types::request::{CodeActionRequest, Completion, HoverRequest, Request as _};
 use lsp_types::{
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, PublishDiagnostics,
     },
-    CompletionOptions, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams,
-    DidCloseTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, Position,
-    PublishDiagnosticsParams, Range, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, Uri,
+    CodeActionProviderCapability, CompletionOptions, Diagnostic, DiagnosticSeverity,
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    HoverProviderCapability, InitializeParams, Position, PublishDiagnosticsParams, Range,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -40,6 +42,8 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
             ]),
             ..Default::default()
         }),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         ..Default::default()
     };
 
@@ -68,6 +72,8 @@ fn main_loop(
                 }
                 let resp = match req.method.as_str() {
                     Completion::METHOD => completion::handle(&req, &documents),
+                    HoverRequest::METHOD => hover::handle(&req, &documents),
+                    CodeActionRequest::METHOD => code_action::handle(&req),
                     _ => Response::new_err(
                         req.id.clone(),
                         lsp_server::ErrorCode::MethodNotFound as i32,
@@ -155,6 +161,21 @@ fn validate_mjml(text: &str) -> Vec<Diagnostic> {
             validate::Severity::Error => DiagnosticSeverity::ERROR,
             validate::Severity::Warning => DiagnosticSeverity::WARNING,
         };
+        let data = lint.fix.and_then(|fix| {
+            let edits = fix
+                .edits
+                .into_iter()
+                .map(|(byte_span, new_text)| code_action::FixEdit {
+                    range: span_to_range(text, byte_span.0, byte_span.1),
+                    new_text,
+                })
+                .collect();
+            serde_json::to_value(code_action::DiagnosticFix {
+                title: fix.title,
+                edits,
+            })
+            .ok()
+        });
         diagnostics.push(Diagnostic {
             range,
             severity: Some(severity),
@@ -164,7 +185,7 @@ fn validate_mjml(text: &str) -> Vec<Diagnostic> {
             message: lint.message,
             related_information: None,
             tags: None,
-            data: None,
+            data,
         });
     }
 

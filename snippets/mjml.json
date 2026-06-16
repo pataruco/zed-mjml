@@ -1,0 +1,157 @@
+{
+  "MJML Document": {
+    "prefix": "mjml",
+    "body": [
+      "<mjml>",
+      "  <mj-body>",
+      "    <mj-section>",
+      "      <mj-column>",
+      "        $0",
+      "      </mj-column>",
+      "    </mj-section>",
+      "  </mj-body>",
+      "</mjml>"
+    ],
+    "description": "A complete MJML document skeleton"
+  },
+  "mj-head": {
+    "prefix": "mjhead",
+    "body": ["<mj-head>", "  $0", "</mj-head>"],
+    "description": "Document head container"
+  },
+  "mj-body": {
+    "prefix": "mjbody",
+    "body": ["<mj-body>", "  $0", "</mj-body>"],
+    "description": "Email body container"
+  },
+  "mj-section": {
+    "prefix": "mjsection",
+    "body": [
+      "<mj-section>",
+      "  <mj-column>",
+      "    $0",
+      "  </mj-column>",
+      "</mj-section>"
+    ],
+    "description": "A section containing a column"
+  },
+  "mj-column": {
+    "prefix": "mjcolumn",
+    "body": ["<mj-column>", "  $0", "</mj-column>"],
+    "description": "A column inside a section"
+  },
+  "mj-wrapper": {
+    "prefix": "mjwrapper",
+    "body": ["<mj-wrapper>", "  $0", "</mj-wrapper>"],
+    "description": "Wraps sections to share a background"
+  },
+  "mj-group": {
+    "prefix": "mjgroup",
+    "body": ["<mj-group>", "  $0", "</mj-group>"],
+    "description": "Keeps columns side by side on mobile"
+  },
+  "mj-hero": {
+    "prefix": "mjhero",
+    "body": ["<mj-hero>", "  $0", "</mj-hero>"],
+    "description": "Hero block with a background image"
+  },
+  "mj-text": {
+    "prefix": "mjtext",
+    "body": ["<mj-text>$0</mj-text>"],
+    "description": "A block of text"
+  },
+  "mj-button": {
+    "prefix": "mjbutton",
+    "body": ["<mj-button href=\"$1\">${2:Button}</mj-button>$0"],
+    "description": "A call-to-action button"
+  },
+  "mj-image": {
+    "prefix": "mjimage",
+    "body": ["<mj-image src=\"$1\" alt=\"$2\" />$0"],
+    "description": "A responsive image"
+  },
+  "mj-divider": {
+    "prefix": "mjdivider",
+    "body": ["<mj-divider />$0"],
+    "description": "A horizontal divider"
+  },
+  "mj-spacer": {
+    "prefix": "mjspacer",
+    "body": ["<mj-spacer height=\"${1:20px}\" />$0"],
+    "description": "Vertical spacing"
+  },
+  "mj-table": {
+    "prefix": "mjtable",
+    "body": ["<mj-table>", "  $0", "</mj-table>"],
+    "description": "A table for tabular data"
+  },
+  "mj-raw": {
+    "prefix": "mjraw",
+    "body": ["<mj-raw>", "  $0", "</mj-raw>"],
+    "description": "Raw, unprocessed HTML"
+  },
+  "mj-style": {
+    "prefix": "mjstyle",
+    "body": ["<mj-style>", "  $0", "</mj-style>"],
+    "description": "CSS styles in the document head"
+  },
+  "mj-font": {
+    "prefix": "mjfont",
+    "body": ["<mj-font name=\"$1\" href=\"$2\" />$0"],
+    "description": "Import a web font"
+  },
+  "mj-breakpoint": {
+    "prefix": "mjbreakpoint",
+    "body": ["<mj-breakpoint width=\"${1:480px}\" />$0"],
+    "description": "Mobile layout breakpoint"
+  },
+  "mj-social": {
+    "prefix": "mjsocial",
+    "body": [
+      "<mj-social>",
+      "  <mj-social-element name=\"$1\" href=\"$2\" />",
+      "</mj-social>$0"
+    ],
+    "description": "A row of social network icons"
+  },
+  "mj-social-element": {
+    "prefix": "mjsocialelement",
+    "body": ["<mj-social-element name=\"$1\" href=\"$2\" />$0"],
+    "description": "A single social network entry"
+  },
+  "mj-navbar": {
+    "prefix": "mjnavbar",
+    "body": [
+      "<mj-navbar>",
+      "  <mj-navbar-link href=\"$1\">${2:Link}</mj-navbar-link>",
+      "</mj-navbar>$0"
+    ],
+    "description": "A navigation bar"
+  },
+  "mj-accordion": {
+    "prefix": "mjaccordion",
+    "body": [
+      "<mj-accordion>",
+      "  <mj-accordion-element>",
+      "    <mj-accordion-title>${1:Title}</mj-accordion-title>",
+      "    <mj-accordion-text>${2:Text}</mj-accordion-text>",
+      "  </mj-accordion-element>",
+      "</mj-accordion>$0"
+    ],
+    "description": "A collapsible accordion"
+  },
+  "mj-carousel": {
+    "prefix": "mjcarousel",
+    "body": [
+      "<mj-carousel>",
+      "  <mj-carousel-image src=\"$1\" />",
+      "</mj-carousel>$0"
+    ],
+    "description": "An image carousel"
+  },
+  "mj-include": {
+    "prefix": "mjinclude",
+    "body": ["<mj-include path=\"$1\" />$0"],
+    "description": "Include another MJML, HTML, or CSS file"
+  }
+}
