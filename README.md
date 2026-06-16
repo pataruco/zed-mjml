@@ -35,21 +35,39 @@ All standard MJML components are supported:
 
 ## Installation
 
-### From the Extension Registry
+### Install in Zed (from the extension registry)
 
 MJML is published in the official Zed extension registry, so you can install it directly from the editor:
 
 1. Open Zed
-2. Open the Extensions panel (`Cmd+Shift+X`)
-3. Search for "MJML"
-4. Click Install
+2. Open the Extensions panel — press `Cmd+Shift+X` (`Ctrl+Shift+X` on Linux), or run `zed: extensions` from the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+3. Search for **MJML**
+4. Click **Install**
 
-### As a Dev Extension
+Syntax highlighting, indentation, and the document outline work immediately. The MJML language server that powers diagnostics is downloaded automatically the first time you open a `.mjml` file — no extra setup required. Prebuilt language-server binaries are provided for macOS (Apple Silicon and Intel) and Linux (x86-64).
 
-1. Clone this repository
-2. In Zed, open the command palette (`Cmd+Shift+P`)
-3. Run "zed: install dev extension"
+### Install locally (as a dev extension)
+
+Install your local checkout when you want to try unreleased changes or work on the extension itself.
+
+**Prerequisites**
+
+- [Zed](https://zed.dev)
+- [Rust, installed via `rustup`](https://rustup.rs) — Zed compiles the extension to WebAssembly when you install it. A Rust toolchain installed another way (for example via Homebrew) will not work for dev extensions.
+
+**Steps**
+
+1. Clone this repository:
+
+   ```bash
+   git clone https://github.com/pataruco/zed-mjml.git
+   ```
+
+2. In Zed, open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+3. Run `zed: install dev extension`
 4. Select the cloned directory
+
+Zed builds the extension locally and loads it. As with the registry build, the language server binary is downloaded from the latest GitHub release the first time you open a `.mjml` file. If you already have the published version installed, Zed replaces it with your dev build (shown as "Overridden by dev extension" in the Extensions panel).
 
 ## Testing Locally
 
@@ -78,7 +96,7 @@ test/
 
 To test:
 
-1. Install the extension as a dev extension (see [Installation](#as-a-dev-extension))
+1. Install the extension as a dev extension (see [Install locally](#install-locally-as-a-dev-extension))
 2. Open any file from `test/valid/` — verify no diagnostics appear
 3. Open any file from `test/invalid/` — verify errors/warnings are highlighted
 4. After making changes to the LSP, rebuild with `cargo build --manifest-path crates/mjml-lsp/Cargo.toml` and restart Zed (`Cmd+Q`) to pick up the new binary
