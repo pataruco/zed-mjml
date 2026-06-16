@@ -2,6 +2,7 @@
 // since its Hash/Eq implementation is based on the string value only.
 #![allow(clippy::mutable_key_type)]
 
+mod completion;
 mod rules;
 mod scanner;
 mod validate;
@@ -11,12 +12,15 @@ use std::error::Error;
 
 use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::notification::Notification as _;
+use lsp_types::request::{Completion, Request as _};
 use lsp_types::{
-    Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, InitializeParams, Position, PublishDiagnosticsParams, Range,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
-    notification::{DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
-                   PublishDiagnostics},
+    notification::{
+        DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, PublishDiagnostics,
+    },
+    CompletionOptions, Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, Position,
+    PublishDiagnosticsParams, Range, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, Uri,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -26,6 +30,16 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let capabilities = ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![
+                "<".to_string(),
+                " ".to_string(),
+                "\"".to_string(),
+                "'".to_string(),
+                "=".to_string(),
+            ]),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
@@ -52,13 +66,14 @@ fn main_loop(
                 if connection.handle_shutdown(&req)? {
                     break;
                 }
-                // We don't handle any requests beyond shutdown for now.
-                // Respond with MethodNotFound for unknown requests.
-                let resp = Response::new_err(
-                    req.id,
-                    lsp_server::ErrorCode::MethodNotFound as i32,
-                    "method not supported".to_string(),
-                );
+                let resp = match req.method.as_str() {
+                    Completion::METHOD => completion::handle(&req, &documents),
+                    _ => Response::new_err(
+                        req.id.clone(),
+                        lsp_server::ErrorCode::MethodNotFound as i32,
+                        "method not supported".to_string(),
+                    ),
+                };
                 connection.sender.send(Message::Response(resp))?;
             }
             Message::Notification(notification) => {
@@ -192,10 +207,7 @@ fn validate_mjml(text: &str) -> Vec<Diagnostic> {
 
 /// Extracts the source text at a byte span, trimmed and truncated for display.
 fn snippet_at(text: &str, start: usize, end: usize) -> String {
-    let s = text
-        .get(start..end.min(text.len()))
-        .unwrap_or("")
-        .trim();
+    let s = text.get(start..end.min(text.len())).unwrap_or("").trim();
     if s.len() > 60 {
         format!("{}...", &s[..57])
     } else {
@@ -238,10 +250,7 @@ fn find_parent_tag(text: &str, byte_offset: usize) -> Option<String> {
 
 /// Extracts position information from a mrml parser error and returns a
 /// Range and human-friendly error message suitable for an LSP diagnostic.
-fn error_to_range_and_message(
-    text: &str,
-    err: &mrml::prelude::parser::Error,
-) -> (Range, String) {
+fn error_to_range_and_message(text: &str, err: &mrml::prelude::parser::Error) -> (Range, String) {
     use mrml::prelude::parser::Error;
 
     match err {
@@ -269,9 +278,7 @@ fn error_to_range_and_message(
                 (false, Some(tag)) => format!(
                     "Unexpected content inside `<{tag}>` — `<{tag}>` cannot contain `{snippet}`"
                 ),
-                (false, None) => format!(
-                    "Unexpected token: `{snippet}` is not valid here"
-                ),
+                (false, None) => format!("Unexpected token: `{snippet}` is not valid here"),
             };
             (range, message)
         }
@@ -295,9 +302,7 @@ fn error_to_range_and_message(
             };
             (range, message)
         }
-        Error::MissingAttribute {
-            name, position, ..
-        } => {
+        Error::MissingAttribute { name, position, .. } => {
             let range = span_to_range(text, position.start, position.end);
             let snippet = snippet_at(text, position.start, position.end);
             let message = if snippet.is_empty() {
@@ -318,17 +323,17 @@ fn error_to_range_and_message(
         Error::ParserError { source, .. } => {
             let pos = source.pos();
             // htmlparser TextPos is 1-based; LSP Position is 0-based.
-            let lsp_pos = Position::new(
-                pos.row.saturating_sub(1),
-                pos.col.saturating_sub(1),
-            );
+            let lsp_pos = Position::new(pos.row.saturating_sub(1), pos.col.saturating_sub(1));
             let range = Range::new(lsp_pos, lsp_pos);
             let message = format!("Syntax error: {source}");
             (range, message)
         }
         Error::EndOfStream { .. } => {
             let range = Range::new(Position::new(0, 0), Position::new(0, 0));
-            (range, "Unexpected end of file — check for unclosed tags".to_string())
+            (
+                range,
+                "Unexpected end of file — check for unclosed tags".to_string(),
+            )
         }
         Error::SizeLimit { .. } => {
             let range = Range::new(Position::new(0, 0), Position::new(0, 0));
@@ -367,11 +372,41 @@ fn byte_offset_to_position(text: &str, byte_offset: usize) -> Position {
             // Count UTF-16 code units: characters in the Basic Multilingual Plane
             // take 1 code unit, supplementary characters take 2 (surrogate pair).
             #[expect(clippy::cast_possible_truncation)]
-            { character += ch.len_utf16() as u32; }
+            {
+                character += ch.len_utf16() as u32;
+            }
         }
     }
 
     Position::new(line, character)
+}
+
+/// Converts an LSP Position (0-based line and UTF-16 character offset) into a
+/// byte offset in the source text. Clamps to line and document bounds.
+fn position_to_offset(text: &str, pos: Position) -> usize {
+    let mut line = 0u32;
+    let mut character = 0u32;
+
+    for (i, ch) in text.char_indices() {
+        if line == pos.line && character >= pos.character {
+            return i;
+        }
+        if ch == '\n' {
+            if line == pos.line {
+                // Target character is past the end of this line; clamp to the newline.
+                return i;
+            }
+            line += 1;
+            character = 0;
+        } else {
+            #[expect(clippy::cast_possible_truncation)]
+            {
+                character += ch.len_utf16() as u32;
+            }
+        }
+    }
+
+    text.len()
 }
 
 /// Sends a publishDiagnostics notification to the client.
@@ -385,10 +420,7 @@ fn publish_diagnostics(
         diagnostics,
         version: None,
     };
-    let notification = Notification::new(
-        PublishDiagnostics::METHOD.to_string(),
-        params,
-    );
+    let notification = Notification::new(PublishDiagnostics::METHOD.to_string(), params);
     connection
         .sender
         .send(Message::Notification(notification))?;
