@@ -18,7 +18,8 @@
       "Bash(cargo test --manifest-path crates/mjml-lsp/Cargo.toml)",
       "Bash(cargo build --manifest-path crates/mjml-lsp/Cargo.toml)",
       "Bash(cargo clippy -- -D warnings)",
-      "Bash(cargo clippy --manifest-path crates/mjml-lsp/Cargo.toml -- -D warnings)"
+      "Bash(cargo clippy --manifest-path crates/mjml-lsp/Cargo.toml -- -D warnings)",
+      "Bash(echo \"=== mrml version in use ===\" && grep -A0 'name = \"mrml\"' crates/mjml-lsp/Cargo.lock && echo \"=== render API in mrml docs \\(search local registry source\\) ===\" && find ~/.cargo -type d -name 'mrml-*' 2>/dev/null | head -3)"
     ]
   }
 }
