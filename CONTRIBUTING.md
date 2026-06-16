@@ -17,16 +17,20 @@ Thanks for your interest in contributing to MJML for Zed!
 
 ```
 zed-mjml/
-├── extension.toml                  # Extension metadata and grammar reference
+├── extension.toml                  # Extension metadata, grammar, snippets, LSP
 ├── src/
 │   └── lib.rs                      # WASM entry point — downloads LSP binary from GitHub releases
+├── snippets/
+│   └── mjml.json                   # Element snippets (shorthand prefixes → full tags)
 ├── crates/
 │   └── mjml-lsp/                   # MJML language server
 │       ├── Cargo.toml
 │       └── src/
-│           ├── main.rs             # LSP server (stdio transport, diagnostics)
-│           ├── rules.rs            # MJML spec data (known tags, nesting, required attrs)
+│           ├── main.rs             # LSP server (stdio transport, request routing)
+│           ├── rules.rs            # MJML component registry (tags, attributes, nesting, docs)
 │           ├── scanner.rs          # Lightweight tag scanner with byte positions
+│           ├── completion.rs       # Tag, attribute, and value completion
+│           ├── hover.rs            # Tag and attribute hover documentation
 │           ├── validate.rs         # Validation rules engine (4 rules)
 │           └── tests.rs            # Integration tests for the LSP
 ├── languages/

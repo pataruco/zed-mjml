@@ -5,6 +5,7 @@ version = "0.1.0"
 schema_version = 1
 authors = ["Pedro Martin <pataruco@gmail.com>"]
 repository = "https://github.com/pataruco/zed-mjml"
+snippets = ["./snippets/mjml.json"]
 
 [grammars.html]
 repository = "https://github.com/tree-sitter/tree-sitter-html"
