@@ -72,12 +72,13 @@ impl MjmlExtension {
             &zed::LanguageServerInstallationStatus::Downloading,
         );
 
-        zed::download_file(
-            &asset.download_url,
-            &binary_path,
-            DownloadedFileType::Gzip,
-        )
-        .map_err(|e| format!("failed to download file: {e}"))?;
+        // `download_file` does not create parent directories for a `Gzip` (single-file)
+        // download, so the version directory must exist beforehand.
+        fs::create_dir_all(&version_dir)
+            .map_err(|e| format!("failed to create directory `{version_dir}`: {e}"))?;
+
+        zed::download_file(&asset.download_url, &binary_path, DownloadedFileType::Gzip)
+            .map_err(|e| format!("failed to download file: {e}"))?;
 
         zed::make_file_executable(&binary_path)
             .map_err(|e| format!("failed to make file executable: {e}"))?;
