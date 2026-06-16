@@ -1,7 +1,7 @@
 id = "mjml"
 name = "MJML"
 description = "MJML email markup language support for Zed."
-version = "0.1.0"
+version = "0.2.0"
 schema_version = 1
 authors = ["Pedro Martin <pataruco@gmail.com>"]
 repository = "https://github.com/pataruco/zed-mjml"
