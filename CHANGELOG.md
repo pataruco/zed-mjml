@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.2.0...zed-mjml-v0.3.0) (2026-06-20)
+
+
+### Features
+
+* add completion support ([6678115](https://github.com/pataruco/zed-mjml/commit/66781152a3d7e4213445c2e108a7ceada8ed013a))
+* add mjml language support ([a60e50d](https://github.com/pataruco/zed-mjml/commit/a60e50d295be59770e96a19c06ae6df416f5257a))
+* add mjml-lsp binary crate with validation and diagnostic publishing ([a3172eb](https://github.com/pataruco/zed-mjml/commit/a3172eb605c7b681657f1ec72c1a84e43e956992))
+* add quick fixes for unknown tags and missing attributes ([3b2b540](https://github.com/pataruco/zed-mjml/commit/3b2b54021301475db756cd58635327f264a8d853))
+* add snippets ([00127f5](https://github.com/pataruco/zed-mjml/commit/00127f59c62bcd0e07178ab0a6e2fd69718d46ed))
+* add Zed extension WASM entry point with LSP download ([c107502](https://github.com/pataruco/zed-mjml/commit/c107502b18b759142cb7f86a83aea72508d0322b))
+* complete all mjml attribute types ([28839b8](https://github.com/pataruco/zed-mjml/commit/28839b81d75b3c1c0b43f42ae54f775d62658cf3))
+* cover all mjml validation rules ([cecd9b8](https://github.com/pataruco/zed-mjml/commit/cecd9b8d790a96cea4ede22e6248a88fde7ec2b4))
+* deploy ([ac2d00b](https://github.com/pataruco/zed-mjml/commit/ac2d00ba581ddf38d92671534f122ad1797e5835))
+* hover and completion ([2d8d3c8](https://github.com/pataruco/zed-mjml/commit/2d8d3c8de3f7ffd018a23a4e8932de7552512b56))
+* refactor highlights ([13ed83f](https://github.com/pataruco/zed-mjml/commit/13ed83ffa327dcc150287ae7141ec9cbefd880ec))
+* set useful error messages ([0b96699](https://github.com/pataruco/zed-mjml/commit/0b966996c0593187b56ca4ba5fabb5922b84c1f3))
+
+
+### Bug Fixes
+
+* managing multiple versions ([ee4412b](https://github.com/pataruco/zed-mjml/commit/ee4412b79c3ae020f1d8ad9d4977662f3e7a64a6))
+
 ## [0.2.0](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.1.0...zed-mjml-v0.2.0) (2026-06-16)
 
 
