@@ -54,11 +54,11 @@ zed-mjml/
 
 The extension has two main parts:
 
-1. **Language definition** (`languages/mjml/`) — Uses [tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html) to parse MJML files since MJML is syntactically identical to HTML. The `.scm` query files provide MJML-specific syntax highlighting, indentation, and outline support.
+1. Language definition (`languages/mjml/`) — Uses [tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html) to parse MJML files since MJML is syntactically identical to HTML. The `.scm` query files provide MJML-specific syntax highlighting, indentation, and outline support.
 
-2. **Language server** (`crates/mjml-lsp/`) — A Rust binary that validates MJML documents using two passes:
-   - **Tag scanner pass** — Scans source text for MJML tags and validates semantic rules (nesting, required attributes, unknown tags, singletons)
-   - **mrml parser pass** — Uses [mrml](https://github.com/jdrouet/mrml) to catch structural XML errors (unclosed tags, malformed markup)
+2. Language server (`crates/mjml-lsp/`) — A Rust binary that validates MJML documents using two passes:
+   - Tag scanner pass — Scans source text for MJML tags and validates semantic rules (nesting, required attributes, unknown tags, singletons)
+   - mrml parser pass — Uses [mrml](https://github.com/jdrouet/mrml) to catch structural XML errors (unclosed tags, malformed markup)
 
 ## Making Changes
 
@@ -90,13 +90,13 @@ Edit `languages/mjml/injections.scm` to add or modify embedded language support 
 
 The validation logic is split across three modules in `crates/mjml-lsp/src/`:
 
-- **`rules.rs`** — MJML specification data (known tags, allowed parents, required attributes, typo suggestions via Levenshtein distance)
-- **`scanner.rs`** — Byte-level tag scanner that extracts `TagInfo` structs with attributes and parent-child relationships
-- **`validate.rs`** — Walks scanned tags and produces `LintDiagnostic` results for 4 rules: nesting, required attributes, unknown tags, and singleton enforcement. Fixable diagnostics (unknown tag, missing required attribute) also carry an optional `LintFix`.
+- `rules.rs` — MJML specification data (known tags, allowed parents, required attributes, typo suggestions via Levenshtein distance)
+- `scanner.rs` — Byte-level tag scanner that extracts `TagInfo` structs with attributes and parent-child relationships
+- `validate.rs` — Walks scanned tags and produces `LintDiagnostic` results for 4 rules: nesting, required attributes, unknown tags, and singleton enforcement. Fixable diagnostics (unknown tag, missing required attribute) also carry an optional `LintFix`.
 
 Quick fixes are handled separately:
 
-- **`code_action.rs`** — Turns the `LintFix` embedded in a diagnostic into a `WorkspaceEdit` when the editor requests a code action
+- `code_action.rs` — Turns the `LintFix` embedded in a diagnostic into a `WorkspaceEdit` when the editor requests a code action
 
 ## Testing
 
@@ -137,18 +137,18 @@ For language definition changes (`.scm` files), reload the extension:
 
 Releases are managed with [release-please](https://github.com/googleapis/release-please) plus a manual binary build. The version in `Cargo.toml`, `extension.toml`, and `crates/mjml-lsp/Cargo.toml` is kept in sync automatically, and it must match the version published to the Zed registry.
 
-1. **Land changes on `main` using [Conventional Commits](https://www.conventionalcommits.org)** (`feat:`, `fix:`, etc.). These determine the next version number.
+1. Land changes on `main` using [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, etc.). These determine the next version number.
 
-2. **Merge the release-please PR.** release-please opens and continuously updates a "release" pull request that bumps the version across `Cargo.toml`, `extension.toml`, and `crates/mjml-lsp/Cargo.toml`, and updates `CHANGELOG.md`. Merging it creates the `zed-mjml-v<version>` tag and a matching GitHub release.
+2. Merge the release-please PR. release-please opens and continuously updates a "release" pull request that bumps the version across `Cargo.toml`, `extension.toml`, and `crates/mjml-lsp/Cargo.toml`, and updates `CHANGELOG.md`. Merging it creates the `zed-mjml-v<version>` tag and a matching GitHub release.
 
-3. **Build and upload the language server binaries.** From the Actions tab, run the **Deploy** workflow (`.github/workflows/deploy.yaml`) and pass the new tag (e.g. `zed-mjml-v0.1.0`). It cross-compiles `mjml-lsp` and uploads one `mjml-lsp-<target>.gz` asset per platform to the release:
+3. Build and upload the language server binaries. From the Actions tab, run the Deploy workflow (`.github/workflows/deploy.yaml`) and pass the new tag (e.g. `zed-mjml-v0.1.0`). It cross-compiles `mjml-lsp` and uploads one `mjml-lsp-<target>.gz` asset per platform to the release:
    - `aarch64-apple-darwin`
    - `x86_64-apple-darwin`
    - `x86_64-unknown-linux-gnu`
 
    This step is required: `src/lib.rs` downloads these assets from the latest GitHub release at install time, so the release must carry them before anyone installs the new version.
 
-4. **Update the Zed extension registry.** Open a pull request against [`zed-industries/extensions`](https://github.com/zed-industries/extensions):
+4. Update the Zed extension registry. Open a pull request against [`zed-industries/extensions`](https://github.com/zed-industries/extensions):
    - Update the `extensions/mjml` submodule to the released commit.
    - Set the `version` for `[mjml]` in `extensions.toml` to match `extension.toml`.
    - Run `pnpm sort-extensions` to keep `extensions.toml` and `.gitmodules` sorted.
