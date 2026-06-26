@@ -7,23 +7,23 @@ A [Zed](https://zed.dev) extension that adds language support for [MJML](https:/
 
 ## Features
 
-- Syntax highlighting — MJML structural tags (`mjml`, `mj-head`, `mj-body`) are visually distinct from layout and content tags
-- Bracket matching — Navigate between opening and closing MJML tags.
-- Auto-indentation — Smart indentation for nested MJML elements
-- Comment toggling — `Cmd+/` toggles `<!-- -->` HTML comments
-- Document outline — `Cmd+Shift+O` to navigate MJML structure
-- CSS injection — Syntax highlighting for CSS inside `<mj-style>` blocks and inline `style` attributes
-- Word-aware navigation — Hyphenated tag names like `mj-section` are treated as single words for selection and navigation
-- Diagnostics — Real-time error reporting via the built-in MJML language server (powered by [mrml](https://github.com/jdrouet/mrml)):
-  - **Nesting validation** — Reports when MJML elements are placed inside incorrect parents (e.g. `<mj-text>` directly inside `<mj-section>`)
-  - **Required attributes** — Warns about missing required attributes (e.g. `src` on `<mj-image>`)
-  - **Unknown tag detection** — Flags unknown `mj-*` elements with "did you mean?" suggestions for typos
-  - **Singleton enforcement** — Errors on duplicate `<mj-head>` or `<mj-body>` elements
-  - **Structural errors** — Reports XML syntax errors, unclosed tags, and missing root elements
-- Quick fixes — One-click code actions for fixable diagnostics: replace an unknown `mj-*` tag with its suggested correction, or insert a missing required attribute (e.g. `src` on `<mj-image>`)
-- Completions — Context-aware suggestions for tags (valid children ranked first), attributes, and enumerated attribute values
-- Hover documentation — Component and attribute docs with a link to the MJML reference, shown on hover
-- Snippets — Shorthand prefixes like `mjsection`, `mjimage`, and `mjml` expand to full MJML elements with tab stops
+- Syntax highlighting: MJML structural tags (`mjml`, `mj-head`, `mj-body`) are visually distinct from layout and content tags
+- Bracket matching: Navigate between opening and closing MJML tags.
+- Auto-indentation: Smart indentation for nested MJML elements
+- Comment toggling: `Cmd+/` toggles `<!-- -->` HTML comments
+- Document outline: `Cmd+Shift+O` to navigate MJML structure
+- CSS injection: Syntax highlighting for CSS inside `<mj-style>` blocks and inline `style` attributes
+- Word-aware navigation: Hyphenated tag names like `mj-section` are treated as single words for selection and navigation
+- Diagnostics: Real-time error reporting via the built-in MJML language server (powered by [mrml](https://github.com/jdrouet/mrml)):
+  - Nesting validation: Reports when MJML elements are placed inside incorrect parents (e.g. `<mj-text>` directly inside `<mj-section>`)
+  - Required attributes: Warns about missing required attributes (e.g. `src` on `<mj-image>`)
+  - Unknown tag detection: Flags unknown `mj-*` elements with "did you mean?" suggestions for typos
+  - Singleton enforcement: Errors on duplicate `<mj-head>` or `<mj-body>` elements
+  - Structural errors: Reports XML syntax errors, unclosed tags, and missing root elements
+- Quick fixes: One-click code actions for fixable diagnostics: replace an unknown `mj-*` tag with its suggested correction, or insert a missing required attribute (e.g. `src` on `<mj-image>`)
+- Completions: Context-aware suggestions for tags (valid children ranked first), attributes, and enumerated attribute values
+- Hover documentation: Component and attribute docs with a link to the MJML reference, shown on hover
+- Snippets: Shorthand prefixes like `mjsection`, `mjimage`, and `mjml` expand to full MJML elements with tab stops
 
 ## Supported Tags
 
@@ -60,21 +60,19 @@ MJML is published in the official Zed extension registry, so you can install it 
 
 1. Open Zed
 2. Open the Extensions panel — press `Cmd+Shift+X` (`Ctrl+Shift+X` on Linux), or run `zed: extensions` from the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-3. Search for **MJML**
-4. Click **Install**
+3. Search for MJML
+4. Click Install
 
 Syntax highlighting, indentation, and the document outline work immediately. The MJML language server that powers diagnostics is downloaded automatically the first time you open a `.mjml` file — no extra setup required. Prebuilt language-server binaries are provided for macOS (Apple Silicon and Intel) and Linux (x86-64).
 
 ### Install locally (as a dev extension)
 
-Install your local checkout when you want to try unreleased changes or work on the extension itself.
-
-**Prerequisites**
+#### Prerequisites
 
 - [Zed](https://zed.dev)
 - [Rust, installed via `rustup`](https://rustup.rs) — Zed compiles the extension to WebAssembly when you install it. A Rust toolchain installed another way (for example via Homebrew) will not work for dev extensions.
 
-**Steps**
+#### Steps
 
 1. Clone this repository:
 

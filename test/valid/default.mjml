@@ -17,18 +17,19 @@
         <mj-image src="https://example.com/logo.png" alt="Logo" width="150px" />
       </mj-column>
     </mj-section>
+    <mj-column>
+      <mj-text font-size="24px" font-weight="bold" align="center">
+        Welcome aboard!
+      </mj-text>
+      <mj-text font-size="16px" line-height="1.5" padding-top="10px">
+        We're thrilled to have you. Here's what you can do next:
+      </mj-text>
+      <mj-button href="https://example.com/get-started" background-color="#007bff" border-radius="4px">
+        Get Started
+      </mj-button>
+    </mj-column>
     <mj-section padding="20px">
-      <mj-column>
-        <mj-text font-size="24px" font-weight="bold" align="center">
-          Welcome aboard!
-        </mj-text>
-        <mj-text font-size="16px" line-height="1.5" padding-top="10px">
-          We're thrilled to have you. Here's what you can do next:
-        </mj-text>
-        <mj-button href="https://example.com/get-started" background-color="#007bff" border-radius="4px">
-          Get Started
-        </mj-button>
-      </mj-column>
+
     </mj-section>
     <mj-section padding="10px">
       <mj-column width="50%">
