@@ -5,24 +5,29 @@
 mod code_action;
 mod completion;
 mod hover;
+mod preview;
 mod rules;
 mod scanner;
 mod validate;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 
-use lsp_server::{Connection, Message, Notification, Response};
+use lsp_server::{Connection, Message, Notification, Request as ServerRequest, Response};
 use lsp_types::notification::Notification as _;
 use lsp_types::request::{CodeActionRequest, Completion, HoverRequest, Request as _};
 use lsp_types::{
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, PublishDiagnostics,
+        ShowMessage,
     },
-    CodeActionProviderCapability, CompletionOptions, Diagnostic, DiagnosticSeverity,
-    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    HoverProviderCapability, InitializeParams, Position, PublishDiagnosticsParams, Range,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+    CodeActionParams, CodeActionProviderCapability, CompletionOptions, Diagnostic,
+    DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, HoverProviderCapability, InitializeParams, MessageType, Position,
+    PublishDiagnosticsParams, Range, ServerCapabilities, ShowMessageParams,
+    TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -61,8 +66,14 @@ fn main_loop(
     connection: &Connection,
     params: serde_json::Value,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
-    let _init_params: InitializeParams = serde_json::from_value(params)?;
+    let init_params: InitializeParams = serde_json::from_value(params)?;
+    let preview_enabled = preview_enabled(&init_params);
     let mut documents: HashMap<Uri, String> = HashMap::new();
+    // Counter for preview marker nonces and applyEdit request ids, plus the set
+    // of nonces already fired. The set makes the applyEdit strip's didChange a
+    // no-op so the preview fires exactly once per selection.
+    let next_id = AtomicU64::new(1);
+    let handled: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
 
     for msg in &connection.receiver {
         match msg {
@@ -73,7 +84,13 @@ fn main_loop(
                 let resp = match req.method.as_str() {
                     Completion::METHOD => completion::handle(&req, &documents),
                     HoverRequest::METHOD => hover::handle(&req, &documents),
-                    CodeActionRequest::METHOD => code_action::handle(&req),
+                    CodeActionRequest::METHOD => {
+                        let mut response = code_action::handle(&req);
+                        if preview_enabled {
+                            append_preview_action(&mut response, &req, &documents, &next_id);
+                        }
+                        response
+                    }
                     _ => Response::new_err(
                         req.id.clone(),
                         lsp_server::ErrorCode::MethodNotFound as i32,
@@ -83,10 +100,17 @@ fn main_loop(
                 connection.sender.send(Message::Response(resp))?;
             }
             Message::Notification(notification) => {
-                handle_notification(connection, &notification, &mut documents)?;
+                handle_notification(
+                    connection,
+                    &notification,
+                    &mut documents,
+                    preview_enabled,
+                    &next_id,
+                    &handled,
+                )?;
             }
             Message::Response(_) => {
-                // We don't send requests, so we don't expect responses.
+                // applyEdit acknowledgements; nothing to do with them.
             }
         }
     }
@@ -99,6 +123,9 @@ fn handle_notification(
     connection: &Connection,
     notification: &Notification,
     documents: &mut HashMap<Uri, String>,
+    preview_enabled: bool,
+    next_id: &AtomicU64,
+    handled: &Mutex<HashSet<String>>,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     match notification.method.as_str() {
         DidOpenTextDocument::METHOD => {
@@ -118,6 +145,9 @@ fn handle_notification(
                 let uri = params.text_document.uri;
                 documents.insert(uri.clone(), change.text.clone());
                 validate_and_publish(connection, &uri, &change.text)?;
+                if preview_enabled {
+                    handle_preview_marker(connection, &uri, &change.text, next_id, handled)?;
+                }
             }
         }
         DidCloseTextDocument::METHOD => {
@@ -134,6 +164,117 @@ fn handle_notification(
     }
 
     Ok(())
+}
+
+/// Reads `mjml.preview.enabled` from the client's initialization options,
+/// defaulting to enabled when unset so the feature works out of the box.
+fn preview_enabled(init: &InitializeParams) -> bool {
+    init.initialization_options
+        .as_ref()
+        .and_then(|options| options.get("mjml"))
+        .and_then(|mjml| mjml.get("preview"))
+        .and_then(|preview| preview.get("enabled"))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true)
+}
+
+/// Derives a file stem from a document URI to name its temp preview file.
+fn preview_stem(uri: &Uri) -> String {
+    let basename = uri.as_str().rsplit('/').next().unwrap_or("mjml-preview");
+    match basename.rsplit_once('.') {
+        Some((stem, _)) => stem.to_string(),
+        None => basename.to_string(),
+    }
+}
+
+/// Appends the "Open Preview in Browser" code action to a code-action response.
+/// The action carries no `command` (Zed would ignore it) and inserts a nonce
+/// marker at EOF; the selection is detected later in didChange.
+fn append_preview_action(
+    response: &mut Response,
+    request: &ServerRequest,
+    documents: &HashMap<Uri, String>,
+    next_id: &AtomicU64,
+) {
+    let Ok(params) = serde_json::from_value::<CodeActionParams>(request.params.clone()) else {
+        return;
+    };
+    let uri = params.text_document.uri;
+    let nonce = next_id.fetch_add(1, Ordering::SeqCst);
+    let at = documents.get(&uri).map_or_else(
+        || Position::new(0, 0),
+        |text| byte_offset_to_position(text, text.len()),
+    );
+    let action = preview::build_preview_action(uri, nonce, at);
+    if let Some(arr) = response
+        .result
+        .as_mut()
+        .and_then(serde_json::Value::as_array_mut)
+    {
+        if let Ok(value) = serde_json::to_value(action) {
+            arr.push(value);
+        }
+    }
+}
+
+/// On a freshly-applied marker: render the document, write the temp HTML, open
+/// the browser, record the nonce, then ask the client to strip the marker via
+/// `workspace/applyEdit`. Already-handled or absent markers are no-ops.
+fn handle_preview_marker(
+    connection: &Connection,
+    uri: &Uri,
+    text: &str,
+    next_id: &AtomicU64,
+    handled: &Mutex<HashSet<String>>,
+) -> Result<(), Box<dyn Error + Sync + Send>> {
+    let decision = preview::classify_marker(text, &handled.lock().expect("handled mutex poisoned"));
+    let preview::MarkerDecision::Fire { nonce, start, end } = decision else {
+        return Ok(());
+    };
+    handled
+        .lock()
+        .expect("handled mutex poisoned")
+        .insert(nonce);
+
+    let html = match preview::render_to_html(text) {
+        Ok(rendered) => preview::inject_base_href(rendered, &preview::source_dir_url(uri)),
+        Err(err) => preview::error_page_html(&err.to_string()),
+    };
+    let stem = preview_stem(uri);
+    match preview::write_temp_html(&html, &stem) {
+        Ok(path) => {
+            if let Err(err) = preview::open_in_browser(&path) {
+                let location = path.display();
+                let message = format!(
+                    "Couldn't open the preview browser automatically ({err}). Open it manually: {location}"
+                );
+                show_message(connection, &message);
+                eprintln!("mjml-lsp: {message}");
+            }
+        }
+        Err(err) => {
+            let message = format!("Couldn't write the preview file: {err}");
+            show_message(connection, &message);
+            eprintln!("mjml-lsp: {message}");
+        }
+    }
+
+    let id = i32::try_from(next_id.fetch_add(1, Ordering::SeqCst)).unwrap_or(i32::MAX);
+    let range = span_to_range(text, start, end);
+    let request = preview::strip_marker_request(id, uri.clone(), range);
+    connection.sender.send(Message::Request(request))?;
+    Ok(())
+}
+
+/// Sends a `window/showMessage` notification so the user sees `message` in the
+/// editor, used when the preview cannot open automatically.
+fn show_message(connection: &Connection, message: &str) {
+    let params = ShowMessageParams {
+        typ: MessageType::WARNING,
+        message: message.to_string(),
+    };
+    let notification = Notification::new(ShowMessage::METHOD.to_string(), params);
+    let _ = connection.sender.send(Message::Notification(notification));
 }
 
 /// Validates the MJML document and publishes diagnostics to the client.
