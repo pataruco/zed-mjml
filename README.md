@@ -52,6 +52,16 @@ Type a shorthand prefix and accept the completion to expand a full MJML element 
 
 All common components have a snippet — see [`snippets/mjml.json`](snippets/mjml.json) for the full list.
 
+## Preview
+
+Open a `.mjml` file, put the cursor anywhere, and run the **Open Preview in Browser** code action (`Cmd/Ctrl+.`). The document renders to HTML and opens in your system browser. Select it again whenever you want a fresh render — there's no live reload yet.
+
+Why a code action and not an in-editor pane: Zed's extension API has no web view and no `workspace/executeCommand`, so the language server can't open a preview on its own. The action works by applying a tiny comment marker and reacting to the resulting edit, then removing the marker — so you may notice it flash for a moment. It's deliberate, and it's gone instantly.
+
+If the MJML is invalid, the browser still opens, with an error page describing the problem instead of a blank window.
+
+The preview is on by default. To turn it off, set the `mjml.preview.enabled` language-server initialization option to `false`.
+
 ## Installation
 
 ### Install in Zed (from the extension registry)
