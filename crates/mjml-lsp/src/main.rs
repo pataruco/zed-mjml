@@ -21,12 +21,13 @@ use lsp_types::request::{CodeActionRequest, Completion, HoverRequest, Request as
 use lsp_types::{
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, PublishDiagnostics,
+        ShowMessage,
     },
     CodeActionParams, CodeActionProviderCapability, CompletionOptions, Diagnostic,
     DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, HoverProviderCapability, InitializeParams, Position,
-    PublishDiagnosticsParams, Range, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, Uri,
+    DidOpenTextDocumentParams, HoverProviderCapability, InitializeParams, MessageType, Position,
+    PublishDiagnosticsParams, Range, ServerCapabilities, ShowMessageParams,
+    TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
 };
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
@@ -243,10 +244,19 @@ fn handle_preview_marker(
     match preview::write_temp_html(&html, &stem) {
         Ok(path) => {
             if let Err(err) = preview::open_in_browser(&path) {
-                eprintln!("mjml-lsp: preview browser open failed: {err}");
+                let location = path.display();
+                let message = format!(
+                    "Couldn't open the preview browser automatically ({err}). Open it manually: {location}"
+                );
+                show_message(connection, &message);
+                eprintln!("mjml-lsp: {message}");
             }
         }
-        Err(err) => eprintln!("mjml-lsp: preview file write failed: {err}"),
+        Err(err) => {
+            let message = format!("Couldn't write the preview file: {err}");
+            show_message(connection, &message);
+            eprintln!("mjml-lsp: {message}");
+        }
     }
 
     let id = i32::try_from(next_id.fetch_add(1, Ordering::SeqCst)).unwrap_or(i32::MAX);
@@ -254,6 +264,17 @@ fn handle_preview_marker(
     let request = preview::strip_marker_request(id, uri.clone(), range);
     connection.sender.send(Message::Request(request))?;
     Ok(())
+}
+
+/// Sends a `window/showMessage` notification so the user sees `message` in the
+/// editor, used when the preview cannot open automatically.
+fn show_message(connection: &Connection, message: &str) {
+    let params = ShowMessageParams {
+        typ: MessageType::WARNING,
+        message: message.to_string(),
+    };
+    let notification = Notification::new(ShowMessage::METHOD.to_string(), params);
+    let _ = connection.sender.send(Message::Notification(notification));
 }
 
 /// Validates the MJML document and publishes diagnostics to the client.
