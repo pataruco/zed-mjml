@@ -58,8 +58,18 @@ pub fn render_to_html(text: &str) -> Result<String, RenderError> {
 pub fn error_page_html(message: &str) -> String {
     format!(
         "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>MJML preview error</title>\
-         </head><body><pre>{message}</pre></body></html>"
+         </head><body><pre>{}</pre></body></html>",
+        escape_html(message)
     )
+}
+
+/// Escapes `&`, `<`, and `>` so arbitrary text can be placed in HTML without
+/// being parsed as markup.
+fn escape_html(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// The directory URL of a document, used to resolve relative resources in the
@@ -266,6 +276,17 @@ mod tests {
         let page = error_page_html("boom: bad mjml");
         assert!(page.contains("<html"), "error page should be an html document: {page}");
         assert!(page.contains("boom: bad mjml"), "error page should contain the message");
+    }
+
+    #[test]
+    fn error_page_escapes_html_special_characters() {
+        let page = error_page_html("unexpected `<mj-foo>` & bar");
+        assert!(page.contains("&lt;mj-foo&gt;"), "angle brackets should be escaped: {page}");
+        assert!(page.contains("&amp; bar"), "ampersands should be escaped: {page}");
+        assert!(
+            !page.contains("<mj-foo>"),
+            "the raw tag must not reach the browser: {page}"
+        );
     }
 
     #[test]
