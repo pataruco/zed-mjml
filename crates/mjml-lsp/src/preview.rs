@@ -62,6 +62,31 @@ pub fn error_page_html(message: &str) -> String {
     )
 }
 
+/// The directory URL of a document, used to resolve relative resources in the
+/// rendered preview (images, fonts). Falls back to the whole URI if it has no
+/// path separator.
+pub fn source_dir_url(uri: &Uri) -> String {
+    let raw = uri.as_str();
+    raw.rfind('/')
+        .map_or_else(|| raw.to_string(), |idx| raw[..=idx].to_string())
+}
+
+/// Inserts a `<base href="...">` tag into rendered HTML so relative image and
+/// font URLs resolve against the source document's directory rather than the
+/// temp preview file's location.
+pub fn inject_base_href(html: String, base_href: &str) -> String {
+    let tag = format!(r#"<base href="{base_href}">"#);
+    let Some(head_pos) = html.find("<head") else {
+        return format!("{tag}{html}");
+    };
+    let Some(rel) = html[head_pos..].find('>') else {
+        return format!("{tag}{html}");
+    };
+    let mut out = html;
+    out.insert_str(head_pos + rel + 1, &tag);
+    out
+}
+
 /// Returns the argv used to open `path` in the default browser for `os`.
 /// Pure: it only builds the argument list and never spawns a process.
 pub fn browser_argv(os: TargetOs, path: &str) -> Vec<String> {
@@ -241,6 +266,31 @@ mod tests {
         let page = error_page_html("boom: bad mjml");
         assert!(page.contains("<html"), "error page should be an html document: {page}");
         assert!(page.contains("boom: bad mjml"), "error page should contain the message");
+    }
+
+    #[test]
+    fn source_dir_url_strips_filename_to_directory() {
+        let uri: Uri = "file:///Users/x/proj/index.mjml".parse().unwrap();
+        assert_eq!(source_dir_url(&uri), "file:///Users/x/proj/");
+    }
+
+    #[test]
+    fn inject_base_href_follows_head_open_tag() {
+        let html = String::from("<html><head><title>x</title></head><body></body></html>");
+        let out = inject_base_href(html, "file:///dir/");
+        assert!(
+            out.contains("<head><base href=\"file:///dir/\">"),
+            "base tag should follow the opening <head>: {out}"
+        );
+    }
+
+    #[test]
+    fn inject_base_href_prepended_without_head() {
+        let out = inject_base_href(String::from("<html><body></body></html>"), "file:///dir/");
+        assert!(
+            out.starts_with("<base href=\"file:///dir/\">"),
+            "base tag should be prepended when there is no <head>: {out}"
+        );
     }
 
     #[test]

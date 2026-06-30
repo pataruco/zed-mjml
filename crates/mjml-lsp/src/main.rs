@@ -235,8 +235,10 @@ fn handle_preview_marker(
         .expect("handled mutex poisoned")
         .insert(nonce);
 
-    let html = preview::render_to_html(text)
-        .unwrap_or_else(|err| preview::error_page_html(&err.to_string()));
+    let html = match preview::render_to_html(text) {
+        Ok(rendered) => preview::inject_base_href(rendered, &preview::source_dir_url(uri)),
+        Err(err) => preview::error_page_html(&err.to_string()),
+    };
     let stem = preview_stem(uri);
     match preview::write_temp_html(&html, &stem) {
         Ok(path) => {
