@@ -6,6 +6,7 @@ mod code_action;
 mod completion;
 mod hover;
 mod preview;
+mod preview_server;
 mod rules;
 mod scanner;
 mod validate;
@@ -13,7 +14,7 @@ mod validate;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use lsp_server::{Connection, Message, Notification, Request as ServerRequest, Response};
 use lsp_types::notification::Notification as _;
@@ -62,18 +63,33 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     Ok(())
 }
 
+/// Everything the browser-preview feature carries between LSP messages.
+struct Preview {
+    enabled: bool,
+    /// Counter for preview marker nonces and applyEdit request ids.
+    next_id: AtomicU64,
+    /// Nonces already fired. Makes the applyEdit strip's didChange a no-op so
+    /// the preview fires exactly once per selection.
+    handled: Mutex<HashSet<String>>,
+    /// Documents served by the live-preview server.
+    state: Arc<preview_server::PreviewState>,
+    /// The live-preview server's port, bound lazily on the first preview.
+    port: Option<u16>,
+}
+
 fn main_loop(
     connection: &Connection,
     params: serde_json::Value,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     let init_params: InitializeParams = serde_json::from_value(params)?;
-    let preview_enabled = preview_enabled(&init_params);
     let mut documents: HashMap<Uri, String> = HashMap::new();
-    // Counter for preview marker nonces and applyEdit request ids, plus the set
-    // of nonces already fired. The set makes the applyEdit strip's didChange a
-    // no-op so the preview fires exactly once per selection.
-    let next_id = AtomicU64::new(1);
-    let handled: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+    let mut preview = Preview {
+        enabled: preview_enabled(&init_params),
+        next_id: AtomicU64::new(1),
+        handled: Mutex::new(HashSet::new()),
+        state: Arc::default(),
+        port: None,
+    };
 
     for msg in &connection.receiver {
         match msg {
@@ -86,8 +102,8 @@ fn main_loop(
                     HoverRequest::METHOD => hover::handle(&req, &documents),
                     CodeActionRequest::METHOD => {
                         let mut response = code_action::handle(&req);
-                        if preview_enabled {
-                            append_preview_action(&mut response, &req, &documents, &next_id);
+                        if preview.enabled {
+                            append_preview_action(&mut response, &req, &documents, &preview.next_id);
                         }
                         response
                     }
@@ -100,14 +116,7 @@ fn main_loop(
                 connection.sender.send(Message::Response(resp))?;
             }
             Message::Notification(notification) => {
-                handle_notification(
-                    connection,
-                    &notification,
-                    &mut documents,
-                    preview_enabled,
-                    &next_id,
-                    &handled,
-                )?;
+                handle_notification(connection, &notification, &mut documents, &mut preview)?;
             }
             Message::Response(_) => {
                 // applyEdit acknowledgements; nothing to do with them.
@@ -123,9 +132,7 @@ fn handle_notification(
     connection: &Connection,
     notification: &Notification,
     documents: &mut HashMap<Uri, String>,
-    preview_enabled: bool,
-    next_id: &AtomicU64,
-    handled: &Mutex<HashSet<String>>,
+    preview: &mut Preview,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     match notification.method.as_str() {
         DidOpenTextDocument::METHOD => {
@@ -145,8 +152,9 @@ fn handle_notification(
                 let uri = params.text_document.uri;
                 documents.insert(uri.clone(), change.text.clone());
                 validate_and_publish(connection, &uri, &change.text)?;
-                if preview_enabled {
-                    handle_preview_marker(connection, &uri, &change.text, next_id, handled)?;
+                if preview.enabled {
+                    handle_preview_marker(connection, &uri, &change.text, preview)?;
+                    refresh_live_preview(preview, &uri, &change.text);
                 }
             }
         }
@@ -217,25 +225,85 @@ fn append_preview_action(
     }
 }
 
-/// On a freshly-applied marker: render the document, write the temp HTML, open
-/// the browser, record the nonce, then ask the client to strip the marker via
-/// `workspace/applyEdit`. Already-handled or absent markers are no-ops.
+/// On a freshly-applied marker: open the preview in the browser, record the
+/// nonce, then ask the client to strip the marker via `workspace/applyEdit`.
+/// Already-handled or absent markers are no-ops.
 fn handle_preview_marker(
     connection: &Connection,
     uri: &Uri,
     text: &str,
-    next_id: &AtomicU64,
-    handled: &Mutex<HashSet<String>>,
+    preview: &mut Preview,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
-    let decision = preview::classify_marker(text, &handled.lock().expect("handled mutex poisoned"));
+    let decision = preview::classify_marker(
+        text,
+        &preview.handled.lock().expect("handled mutex poisoned"),
+    );
     let preview::MarkerDecision::Fire { nonce, start, end } = decision else {
         return Ok(());
     };
-    handled
+    preview
+        .handled
         .lock()
         .expect("handled mutex poisoned")
         .insert(nonce);
 
+    open_preview(connection, uri, text, preview);
+
+    let id = i32::try_from(preview.next_id.fetch_add(1, Ordering::SeqCst)).unwrap_or(i32::MAX);
+    let range = span_to_range(text, start, end);
+    let request = preview::strip_marker_request(id, uri.clone(), range);
+    connection.sender.send(Message::Request(request))?;
+    Ok(())
+}
+
+/// Opens the preview, preferring the live-reloading localhost server and
+/// falling back to a one-shot static temp file when it cannot start.
+fn open_preview(connection: &Connection, uri: &Uri, text: &str, preview: &mut Preview) {
+    match ensure_preview_server(preview) {
+        Ok(port) => open_live_preview(connection, uri, text, preview, port),
+        Err(err) => {
+            eprintln!("mjml-lsp: preview server unavailable ({err}); serving a static preview");
+            open_static_preview(connection, uri, text);
+        }
+    }
+}
+
+/// Starts the live-preview server on first use and returns its port.
+fn ensure_preview_server(preview: &mut Preview) -> std::io::Result<u16> {
+    if let Some(port) = preview.port {
+        return Ok(port);
+    }
+    let port = preview_server::start(Arc::clone(&preview.state))?;
+    preview.port = Some(port);
+    Ok(port)
+}
+
+/// Registers the document with the live-preview server and opens its page.
+fn open_live_preview(connection: &Connection, uri: &Uri, text: &str, preview: &Preview, port: u16) {
+    let stem = live_preview_stem(uri);
+    preview.state.register(
+        &stem,
+        uri.as_str(),
+        render_preview_html(text),
+        preview_server::file_uri_dir(uri.as_str()),
+    );
+    let page = format!(
+        "http://127.0.0.1:{port}/{}/",
+        preview_server::percent_encode_segment(&stem)
+    );
+    if let Err(err) = preview::open_in_browser(&page) {
+        let message = format!(
+            "Couldn't open the preview browser automatically ({err}). Open it manually: {page}"
+        );
+        show_message(connection, &message);
+        eprintln!("mjml-lsp: {message}");
+    }
+}
+
+/// Renders the document to a static temp file and opens it, the pre-live
+/// behavior kept as the fallback. Relative assets resolve via a `<base href>`
+/// pointing at the source directory.
+fn open_static_preview(connection: &Connection, uri: &Uri, text: &str) {
     let html = match preview::render_to_html(text) {
         Ok(rendered) => preview::inject_base_href(rendered, &preview::source_dir_url(uri)),
         Err(err) => preview::error_page_html(&err.to_string()),
@@ -243,7 +311,7 @@ fn handle_preview_marker(
     let stem = preview_stem(uri);
     match preview::write_temp_html(&html, &stem) {
         Ok(path) => {
-            if let Err(err) = preview::open_in_browser(&path) {
+            if let Err(err) = preview::open_in_browser(&path.to_string_lossy()) {
                 let location = path.display();
                 let message = format!(
                     "Couldn't open the preview browser automatically ({err}). Open it manually: {location}"
@@ -258,12 +326,34 @@ fn handle_preview_marker(
             eprintln!("mjml-lsp: {message}");
         }
     }
+}
 
-    let id = i32::try_from(next_id.fetch_add(1, Ordering::SeqCst)).unwrap_or(i32::MAX);
-    let range = span_to_range(text, start, end);
-    let request = preview::strip_marker_request(id, uri.clone(), range);
-    connection.sender.send(Message::Request(request))?;
-    Ok(())
+/// Renders a document for the live preview, with the error page as fallback
+/// so broken MJML still shows something useful (and recovers on the next
+/// edit). No base-href injection: the preview server serves relative assets
+/// from the source directory itself.
+fn render_preview_html(text: &str) -> String {
+    match preview::render_to_html(text) {
+        Ok(html) => html,
+        Err(err) => preview::error_page_html(&err.to_string()),
+    }
+}
+
+/// The live-preview key for a document: its percent-decoded file stem.
+fn live_preview_stem(uri: &Uri) -> String {
+    preview_server::percent_decode(&preview_stem(uri))
+}
+
+/// Re-renders a document registered with the live-preview server so any open
+/// browser page refreshes itself. A no-op for documents never previewed.
+fn refresh_live_preview(preview: &Preview, uri: &Uri, text: &str) {
+    let stem = live_preview_stem(uri);
+    if !preview.state.is_registered(&stem, uri.as_str()) {
+        return;
+    }
+    preview
+        .state
+        .refresh(&stem, uri.as_str(), render_preview_html(text));
 }
 
 /// Sends a `window/showMessage` notification so the user sees `message` in the

@@ -118,11 +118,11 @@ pub fn browser_command(path: &str) -> Vec<String> {
     browser_argv(current_target_os(), path)
 }
 
-/// Spawns the default browser on `path` and returns immediately. It never waits
-/// on the child, so a misbehaving opener cannot stall the LSP main loop.
-pub fn open_in_browser(path: &Path) -> std::io::Result<()> {
-    let path_str = path.to_string_lossy();
-    let argv = browser_command(&path_str);
+/// Spawns the default browser on `target` (a URL or file path) and returns
+/// immediately. It never waits on the child, so a misbehaving opener cannot
+/// stall the LSP main loop.
+pub fn open_in_browser(target: &str) -> std::io::Result<()> {
+    let argv = browser_command(target);
     let Some((program, rest)) = argv.split_first() else {
         return Err(std::io::Error::other("empty browser command"));
     };
