@@ -172,7 +172,7 @@ Releases are managed with [release-please](https://github.com/googleapis/release
 
    The lock file entry is targeted in `release-please-config.json` with the JSONPath `$.package[?(@.name.value=="mjml-lsp")].version`. The `.value` is deliberate: release-please parses TOML into tagged values (`{value, start, end}`) so it can edit in place, so the filter has to compare against that inner field.
 
-3. Build and upload the language server binaries. From the Actions tab, run the Deploy workflow (`.github/workflows/deploy.yaml`) and pass the new tag, for example `zed-mjml-v0.3.0`. It cross-compiles `mjml-lsp` and uploads one `mjml-lsp-<target>.gz` asset per platform to the release:
+3. Build and upload the language server binaries. From the Actions tab, run the Deploy workflow (`.github/workflows/deploy.yaml`) and pass the new tag, for example `zed-mjml-v0.3.0`. The workflow first checks that the tag is well formed and that its release exists, then cross-compiles `mjml-lsp` and uploads one `mjml-lsp-<target>.gz` asset per platform to the release:
    - `aarch64-apple-darwin`
    - `x86_64-apple-darwin`
    - `x86_64-unknown-linux-gnu`
