@@ -1,0 +1,11 @@
+<!-- Curly quotes in text that mrml rejects; the error snippet crosses a multi-byte character (#17) -->
+<!-- Expected: one "Unexpected content" error, and the language server keeps running -->
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-social>Hi “quoted” “quoted” “quoted” “quoted” “quoted” “quoted” “quoted”</mj-social>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

@@ -139,6 +139,7 @@ test/
     ├── empty.mjml          — Empty file
     ├── no-root.mjml        — Missing <mjml> root
     ├── text-in-image.mjml  — Text inside void element
+    ├── multibyte-content.mjml — Curly quotes where the error snippet is cut
     └── unclosed-tag.mjml   — Unclosed tags
 ```
 
