@@ -318,3 +318,67 @@ fn test_validate_mjml_valid_document_still_clean() {
     let diagnostics = validate_mjml(text);
     assert!(diagnostics.is_empty(), "valid document should have no diagnostics, got: {:?}", diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>());
 }
+
+// --- Live preview glue ---
+
+fn test_preview() -> Preview {
+    Preview {
+        enabled: true,
+        next_id: AtomicU64::new(1),
+        handled: Mutex::new(HashSet::new()),
+        state: Arc::default(),
+        port: None,
+    }
+}
+
+const VALID_MJML: &str = "<mjml><mj-body><mj-section><mj-column><mj-text>Hello</mj-text></mj-column></mj-section></mj-body></mjml>";
+
+#[test]
+fn test_render_preview_html_renders_valid_documents() {
+    let html = render_preview_html(VALID_MJML);
+    assert!(html.contains("Hello"), "rendered output should contain the text: {html}");
+    assert!(!html.contains("Failed to"), "valid input should not produce the error page: {html}");
+}
+
+#[test]
+fn test_render_preview_html_falls_back_to_error_page() {
+    let html = render_preview_html("not mjml at all");
+    assert!(html.contains("Failed to parse"), "invalid input should produce the error page: {html}");
+}
+
+#[test]
+fn test_live_preview_stem_decodes_percent_escapes() {
+    let uri: Uri = "file:///tmp/My%20Email.mjml".parse().unwrap();
+    assert_eq!(live_preview_stem(&uri), "My Email");
+}
+
+#[test]
+fn test_refresh_live_preview_ignores_unregistered_documents() {
+    let preview = test_preview();
+    let uri: Uri = "file:///tmp/a.mjml".parse().unwrap();
+    refresh_live_preview(&preview, &uri, VALID_MJML);
+    assert_eq!(preview.state.html("a"), None, "refresh must not register new documents");
+}
+
+#[test]
+fn test_refresh_live_preview_updates_registered_documents() {
+    let preview = test_preview();
+    let uri: Uri = "file:///tmp/a.mjml".parse().unwrap();
+    preview.state.register("a", uri.as_str(), "old".to_string(), None);
+    refresh_live_preview(&preview, &uri, VALID_MJML);
+    let html = preview.state.html("a").expect("document should stay registered");
+    assert!(html.contains("Hello"), "refresh should re-render the document: {html}");
+}
+
+#[test]
+fn test_refresh_live_preview_skips_same_stem_different_file() {
+    let preview = test_preview();
+    preview.state.register("a", "file:///one/a.mjml", "one".to_string(), None);
+    let other: Uri = "file:///two/a.mjml".parse().unwrap();
+    refresh_live_preview(&preview, &other, VALID_MJML);
+    assert_eq!(
+        preview.state.html("a"),
+        Some("one".to_string()),
+        "a same-stem sibling must not overwrite the registered preview"
+    );
+}
