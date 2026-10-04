@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.3.0...zed-mjml-v0.3.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **lsp:** survive panics on multi-byte snippets and harden the deploy workflow ([b336039](https://github.com/pataruco/zed-mjml/commit/b336039336fae667209d0f484cd629fc30795ef1))
+* **lsp:** truncate error snippets on a character boundary and survive panics ([5110a41](https://github.com/pataruco/zed-mjml/commit/5110a414392a053212ec996a8767db8e6eeffad8))
+
 ## [0.3.0](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.2.0...zed-mjml-v0.3.0) (2026-10-04)
 
 
