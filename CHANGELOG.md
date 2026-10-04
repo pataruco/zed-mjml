@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.2.0...zed-mjml-v0.3.0) (2026-10-04)
+
+
+### Features
+
+* **lsp:** resolve mj-include paths relative to the document ([48cc89e](https://github.com/pataruco/zed-mjml/commit/48cc89e237df501d6e6227b692bfca867f613320))
+
+
+### Bug Fixes
+
+* false errors in nesting validation ([b32e939](https://github.com/pataruco/zed-mjml/commit/b32e939d756c125ea1154c1b4fb6373b3db7bf8f))
+* **lsp:** allow any component inside mj-attributes and treat rootless files as partials ([bc7841e](https://github.com/pataruco/zed-mjml/commit/bc7841eb3252d2ee9826d5f497f66f7c11070e56))
+* **lsp:** bump lsp-server to 0.10 and refresh lock file ([e7f4c04](https://github.com/pataruco/zed-mjml/commit/e7f4c0470e733c38f3f19b08eed59d2ab0ee5dea))
+* **lsp:** bump lsp-server to 0.10 and refresh lock file ([e87f6af](https://github.com/pataruco/zed-mjml/commit/e87f6afcddc8e70567902965515f01cee0806490))
+* **lsp:** do not report mrml's inline-style build warning ([ffbd730](https://github.com/pataruco/zed-mjml/commit/ffbd730093925b3545da493b94dce5865d1867ee))
+
 ## [0.2.0](https://github.com/pataruco/zed-mjml/compare/zed-mjml-v0.1.0...zed-mjml-v0.2.0) (2026-06-16)
 
 
