@@ -11,8 +11,11 @@ mod validate;
 
 use std::collections::HashMap;
 use std::error::Error;
+use std::path::{Path, PathBuf};
 
 use lsp_server::{Connection, Message, Notification, Response};
+use mrml::prelude::parser::loader::{IncludeLoader, IncludeLoaderError};
+use mrml::prelude::parser::ParserOptions;
 use lsp_types::notification::Notification as _;
 use lsp_types::request::{CodeActionRequest, Completion, HoverRequest, Request as _};
 use lsp_types::{
@@ -142,14 +145,42 @@ fn validate_and_publish(
     uri: &Uri,
     text: &str,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
-    let diagnostics = validate_mjml(text);
+    let base_dir = document_dir(uri);
+    let diagnostics = validate_mjml(text, base_dir.as_deref());
     publish_diagnostics(connection, uri, diagnostics)?;
     Ok(())
 }
 
+/// Returns the directory containing the document for a `file:` URI, or `None`
+/// for documents without a location on disk (e.g. untitled buffers).
+fn document_dir(uri: &Uri) -> Option<PathBuf> {
+    if uri.scheme()?.as_str() != "file" {
+        return None;
+    }
+    let path = uri.path().as_estr().decode().into_string_lossy();
+    Path::new(path.as_ref()).parent().map(Path::to_path_buf)
+}
+
+/// Resolves `mj-include` paths relative to the including document's directory,
+/// mirroring how the MJML CLI resolves them.
+#[derive(Debug)]
+struct DocumentIncludeLoader {
+    base_dir: PathBuf,
+}
+
+impl IncludeLoader for DocumentIncludeLoader {
+    fn resolve(&self, path: &str) -> Result<String, IncludeLoaderError> {
+        std::fs::read_to_string(self.base_dir.join(path))
+            .map_err(|err| IncludeLoaderError::new(path, err.kind()))
+    }
+}
+
 /// Validates the MJML document using both the tag scanner (semantic rules)
 /// and mrml parser (structural rules). Returns all diagnostics.
-fn validate_mjml(text: &str) -> Vec<Diagnostic> {
+///
+/// `base_dir` is the document's directory, used to resolve `mj-include` paths.
+/// Without it, includes cannot be loaded and are reported as such.
+fn validate_mjml(text: &str, base_dir: Option<&Path>) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
 
     // Pass 1: Tag scanner + MJML semantic validation
@@ -189,8 +220,22 @@ fn validate_mjml(text: &str) -> Vec<Diagnostic> {
         });
     }
 
-    // Pass 2: mrml structural validation
-    match mrml::parse(text) {
+    // Pass 2: mrml structural validation (skipped for partials, which have no root to parse)
+    if validate::is_partial(&tags) {
+        return diagnostics;
+    }
+    let parsed = base_dir.map_or_else(
+        || mrml::parse(text),
+        |dir| {
+            let options = ParserOptions {
+                include_loader: Box::new(DocumentIncludeLoader {
+                    base_dir: dir.to_path_buf(),
+                }),
+            };
+            mrml::parse_with_options(text, &options)
+        },
+    );
+    match parsed {
         Ok(output) => {
             for warning in output.warnings {
                 let range = span_to_range(text, warning.span.start, warning.span.end);
