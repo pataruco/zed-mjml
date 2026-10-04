@@ -1,4 +1,4 @@
-<!-- All 4 rules violated in a single document -->
+<!-- Every validation rule violated in a single document -->
 <!-- Expected: errors and warnings from every category -->
 <mjml>
   <mj-head>

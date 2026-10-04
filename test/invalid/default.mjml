@@ -1,4 +1,4 @@
-<!-- Tests all 4 validation rules. Multiple errors should be reported. -->
+<!-- Exercises every validation rule. Multiple errors should be reported. -->
 <mjml>
   <mj-head>
     <mj-title>Broken Email</mj-title>
