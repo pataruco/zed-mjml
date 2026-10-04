@@ -227,7 +227,7 @@ fn find_bytes(haystack: &[u8], start: usize, needle: &[u8]) -> Option<usize> {
         .map(|i| start + i)
 }
 
-fn find_gt_skipping_strings(bytes: &[u8], start: usize) -> Option<usize> {
+const fn find_gt_skipping_strings(bytes: &[u8], start: usize) -> Option<usize> {
     let mut pos = start;
     while pos < bytes.len() {
         match bytes[pos] {
