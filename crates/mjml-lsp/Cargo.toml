@@ -2,6 +2,7 @@
 name = "mjml-lsp"
 version = "0.3.0"
 edition = "2021"
+rust-version = "1.91"
 license = "MIT"
 
 [[bin]]
