@@ -73,16 +73,26 @@ fn main_loop(
                 if connection.handle_shutdown(&req)? {
                     break;
                 }
-                let resp = match req.method.as_str() {
-                    Completion::METHOD => completion::handle(&req, &documents),
-                    HoverRequest::METHOD => hover::handle(&req, &documents),
-                    CodeActionRequest::METHOD => code_action::handle(&req),
-                    _ => Response::new_err(
-                        req.id.clone(),
-                        lsp_server::ErrorCode::MethodNotFound as i32,
-                        "method not supported".to_string(),
-                    ),
-                };
+                let resp = guard_panic(
+                    "request handler",
+                    || {
+                        Response::new_err(
+                            req.id.clone(),
+                            lsp_server::ErrorCode::InternalError as i32,
+                            "internal error, see the mjml-lsp log".to_string(),
+                        )
+                    },
+                    || match req.method.as_str() {
+                        Completion::METHOD => completion::handle(&req, &documents),
+                        HoverRequest::METHOD => hover::handle(&req, &documents),
+                        CodeActionRequest::METHOD => code_action::handle(&req),
+                        _ => Response::new_err(
+                            req.id.clone(),
+                            lsp_server::ErrorCode::MethodNotFound as i32,
+                            "method not supported".to_string(),
+                        ),
+                    },
+                );
                 connection.sender.send(Message::Response(resp))?;
             }
             Message::Notification(notification) => {
@@ -146,9 +156,52 @@ fn validate_and_publish(
     text: &str,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     let base_dir = document_dir(uri);
-    let diagnostics = validate_mjml(text, base_dir.as_deref());
+    let diagnostics = guard_panic(
+        "validation",
+        || vec![internal_error_diagnostic()],
+        || validate_mjml(text, base_dir.as_deref()),
+    );
     publish_diagnostics(connection, uri, diagnostics)?;
     Ok(())
+}
+
+/// Runs `f`, turning a panic into `fallback()` so one bad input cannot take the
+/// server down. Relies on the default `panic = "unwind"` profile.
+fn guard_panic<T>(what: &str, fallback: impl FnOnce() -> T, f: impl FnOnce() -> T) -> T {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        Ok(value) => value,
+        Err(payload) => {
+            eprintln!("mjml-lsp: {what} panicked: {}", panic_message(&*payload));
+            fallback()
+        }
+    }
+}
+
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    payload.downcast_ref::<&str>().map_or_else(
+        || {
+            payload
+                .downcast_ref::<String>()
+                .cloned()
+                .unwrap_or_else(|| "unknown panic".to_owned())
+        },
+        |s| (*s).to_owned(),
+    )
+}
+
+/// The single diagnostic published when validation itself fails.
+fn internal_error_diagnostic() -> Diagnostic {
+    Diagnostic {
+        range: Range::new(Position::new(0, 0), Position::new(0, 0)),
+        severity: Some(DiagnosticSeverity::ERROR),
+        code: None,
+        code_description: None,
+        source: Some("mjml".to_string()),
+        message: "mjml-lsp: internal error while validating this file. Please report it at https://github.com/pataruco/zed-mjml/issues".to_string(),
+        related_information: None,
+        tags: None,
+        data: None,
+    }
 }
 
 /// Returns the directory containing the document for a `file:` URI, or `None`
@@ -280,7 +333,7 @@ fn validate_mjml(text: &str, base_dir: Option<&Path>) -> Vec<Diagnostic> {
 fn snippet_at(text: &str, start: usize, end: usize) -> String {
     let s = text.get(start..end.min(text.len())).unwrap_or("").trim();
     if s.len() > 60 {
-        format!("{}...", &s[..57])
+        format!("{}...", &s[..s.floor_char_boundary(57)])
     } else {
         s.to_string()
     }

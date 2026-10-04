@@ -1,19 +1,37 @@
 name: Deploy
-run-name: ${{ github.actor }} is deploying to Google Cloud Run with tag ${{ github.event.inputs.tag }}
+run-name: ${{ github.actor }} is uploading mjml-lsp binaries for ${{ inputs.tag }}
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Select the server tag to deploy"
+        description: "Release tag to upload binaries to, e.g. zed-mjml-v0.3.0"
         required: true
         type: string
-        default: "zed-mjml-v0.1.0"
 
 permissions:
   contents: write
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the tag is well formed and its release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^zed-mjml-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' does not look like zed-mjml-v<major>.<minor>.<patch>"
+            exit 1
+          fi
+          if ! gh release view "$TAG" >/dev/null; then
+            echo "::error::No GitHub release exists for '$TAG'. Merge the release-please PR first."
+            exit 1
+          fi
+
   build:
+    needs: validate
     strategy:
       matrix:
         include:
@@ -49,4 +67,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUILD_TARGET: ${{ matrix.target }}
-        run: gh release upload "${{ inputs.tag }}" "crates/mjml-lsp/target/${BUILD_TARGET}/release/mjml-lsp-${BUILD_TARGET}.gz"
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" "crates/mjml-lsp/target/${BUILD_TARGET}/release/mjml-lsp-${BUILD_TARGET}.gz"

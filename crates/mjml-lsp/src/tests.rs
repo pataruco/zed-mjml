@@ -195,6 +195,46 @@ fn test_snippet_at_empty_span() {
 }
 
 #[test]
+fn test_snippet_at_multibyte_boundary() {
+    // `«` is two bytes, so byte 57 is always mid-character (#17).
+    let text = "«".repeat(40);
+    let result = snippet_at(&text, 0, text.len());
+    assert_eq!(result, format!("{}...", "«".repeat(28)));
+}
+
+#[test]
+fn test_snippet_at_multibyte_under_limit() {
+    let text = "é".repeat(20);
+    assert_eq!(snippet_at(&text, 0, text.len()), text);
+}
+
+#[test]
+fn test_guard_panic_returns_fallback() {
+    let value = guard_panic("test", || 7, || -> i32 { panic!("boom") });
+    assert_eq!(value, 7);
+}
+
+#[test]
+fn test_guard_panic_passes_value_through() {
+    let value = guard_panic("test", || 0, || 42);
+    assert_eq!(value, 42);
+}
+
+#[test]
+fn test_validate_mjml_multibyte_error_snippet() {
+    let text = format!(
+        "<mjml><mj-body><mj-section><mj-column><mj-social>Hi {}</mj-social></mj-column></mj-section></mj-body></mjml>",
+        "“quoted” ".repeat(10)
+    );
+    let diagnostics = validate_mjml(&text, None);
+    assert!(
+        diagnostics.iter().any(|d| d.message.contains("Unexpected content")),
+        "expected an mrml diagnostic, got: {:?}",
+        diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn test_error_message_unexpected_element_shows_tag() {
     // <html> is not a valid MJML root element, mrml reports UnexpectedElement
     let text = "<html><body>Hello</body></html>";
