@@ -15,7 +15,8 @@ A [Zed](https://zed.dev) extension that adds language support for [MJML](https:/
 - CSS injection: Syntax highlighting for CSS inside `<mj-style>` blocks and inline `style` attributes
 - Word-aware navigation: Hyphenated tag names like `mj-section` are treated as single words for selection and navigation
 - Diagnostics: Real-time error reporting via the built-in MJML language server (powered by [mrml](https://github.com/jdrouet/mrml)):
-  - Nesting validation: Reports when MJML elements are placed inside incorrect parents (e.g. `<mj-text>` directly inside `<mj-section>`)
+  - Nesting validation: Reports when MJML elements are placed inside incorrect parents (e.g. `<mj-text>` directly inside `<mj-section>`). Component tags inside `<mj-attributes>` are treated as default declarations, and files without an `<mjml>` root are treated as `mj-include` partials
+  - Includes: `<mj-include path="...">` is resolved relative to the current file, so split templates validate as a whole
   - Required attributes: Warns about missing required attributes (e.g. `src` on `<mj-image>`)
   - Unknown tag detection: Flags unknown `mj-*` elements with "did you mean?" suggestions for typos
   - Singleton enforcement: Errors on duplicate `<mj-head>` or `<mj-body>` elements
@@ -93,10 +94,15 @@ The `test/` folder contains sample MJML files for manually verifying the extensi
 ```
 test/
 ├── valid/        — Files that should show no diagnostics
+│   ├── attributes.mjml     — Component tags as defaults inside mj-attributes
 │   ├── default.mjml
 │   ├── full.mjml
 │   ├── head-only.mjml
-│   └── minimal.mjml
+│   ├── minimal.mjml
+│   ├── with-include.mjml   — Template that includes the partials below
+│   └── partials/
+│       ├── head.mjml       — Head partial without an <mjml> root
+│       └── body.mjml       — Body partial without an <mjml> root
 └── invalid/      — Files that should trigger errors and warnings
     ├── default.mjml        — Exercises all 4 validation rules
     ├── nesting.mjml        — Nesting violations

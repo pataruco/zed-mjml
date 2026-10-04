@@ -1,0 +1,15 @@
+<!-- Template split into partials; includes resolve relative to this file (#19) -->
+<!-- Expected: ZERO diagnostics -->
+<mjml>
+  <mj-head>
+    <mj-include path="./partials/head.mjml" />
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Main content</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-include path="./partials/body.mjml" />
+  </mj-body>
+</mjml>
