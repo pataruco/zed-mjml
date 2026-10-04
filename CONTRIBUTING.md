@@ -139,7 +139,9 @@ Releases are managed with [release-please](https://github.com/googleapis/release
 
 1. Land changes on `main` using [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, etc.). These determine the next version number.
 
-2. Merge the release-please PR. release-please opens and continuously updates a "release" pull request that bumps the version across `Cargo.toml`, `extension.toml`, and `crates/mjml-lsp/Cargo.toml`, and updates `CHANGELOG.md`. Merging it creates the `zed-mjml-v<version>` tag and a matching GitHub release.
+2. Merge the release-please PR. release-please opens and continuously updates a "release" pull request that bumps the version across `Cargo.toml`, `extension.toml`, `crates/mjml-lsp/Cargo.toml` and both `Cargo.lock` files, and updates `CHANGELOG.md`. Merging it creates the `zed-mjml-v<version>` tag and a matching GitHub release.
+
+   The lock file entry is targeted in `release-please-config.json` with the JSONPath `$.package[?(@.name.value=="mjml-lsp")].version`. The `.value` is deliberate: release-please parses TOML into tagged values (`{value, start, end}`) so it can edit in place, and the filter has to compare against that inner field.
 
 3. Build and upload the language server binaries. From the Actions tab, run the Deploy workflow (`.github/workflows/deploy.yaml`) and pass the new tag (e.g. `zed-mjml-v0.1.0`). It cross-compiles `mjml-lsp` and uploads one `mjml-lsp-<target>.gz` asset per platform to the release:
    - `aarch64-apple-darwin`
