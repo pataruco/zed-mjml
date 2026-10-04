@@ -28,6 +28,49 @@ pub struct LintDiagnostic {
     pub fix: Option<LintFix>,
 }
 
+/// Returns true if any ancestor of `tag` is `<mj-attributes>`.
+fn inside_attributes(tags: &[TagInfo], tag: &TagInfo) -> bool {
+    let mut parent = tag.parent_idx;
+    while let Some(idx) = parent {
+        if tags[idx].name == "mj-attributes" {
+            return true;
+        }
+        parent = tags[idx].parent_idx;
+    }
+    false
+}
+
+/// Returns true if the scanned tags look like an `mj-include` partial: MJML content
+/// with no `<mjml>` root. MJML grafts such fragments into the including document, so
+/// their root-level tags have no knowable parent. A root-level `<mj-head>` or
+/// `<mj-body>` is treated as a forgotten `<mjml>` wrapper instead, not a partial.
+pub fn is_partial(tags: &[TagInfo]) -> bool {
+    let has_root = tags.iter().any(|t| t.name == "mjml");
+    let has_mjml_content = tags
+        .iter()
+        .any(|t| t.name != "mjml" && KNOWN_TAGS.contains(t.name.as_str()));
+    let has_rootless_structure = tags
+        .iter()
+        .any(|t| t.parent_idx.is_none() && (t.name == "mj-head" || t.name == "mj-body"));
+    !has_root && has_mjml_content && !has_rootless_structure
+}
+
+/// Counts one occurrence of a singleton element and reports every one after the first.
+fn check_singleton(tag: &TagInfo, count: &mut u32, diagnostics: &mut Vec<LintDiagnostic>) {
+    *count += 1;
+    if *count > 1 {
+        diagnostics.push(LintDiagnostic {
+            span: tag.tag_span,
+            severity: Severity::Error,
+            message: format!(
+                "Duplicate <{0}> — only one <{0}> is allowed per document",
+                tag.name
+            ),
+            fix: None,
+        });
+    }
+}
+
 /// Validates a list of scanned tags against MJML rules.
 /// Returns all violations found (does not stop at the first).
 pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
@@ -35,31 +78,21 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
 
     let mut head_count = 0u32;
     let mut body_count = 0u32;
+    let partial = is_partial(tags);
 
     for tag in tags {
+        // Inside <mj-attributes> a component tag names the element being configured
+        // (`<mj-text padding="0" />`), not an instance, so structural rules don't apply.
+        let is_attr_decl = tag.name != "mj-all"
+            && tag.name != "mj-class"
+            && inside_attributes(tags, tag);
+
         // Rule 4: Singleton enforcement
-        if tag.name == "mj-head" {
-            head_count += 1;
-            if head_count > 1 {
-                diagnostics.push(LintDiagnostic {
-                    span: tag.tag_span,
-                    severity: Severity::Error,
-                    message: "Duplicate <mj-head> — only one <mj-head> is allowed per document"
-                        .to_string(),
-                    fix: None,
-                });
-            }
-        }
-        if tag.name == "mj-body" {
-            body_count += 1;
-            if body_count > 1 {
-                diagnostics.push(LintDiagnostic {
-                    span: tag.tag_span,
-                    severity: Severity::Error,
-                    message: "Duplicate <mj-body> — only one <mj-body> is allowed per document"
-                        .to_string(),
-                    fix: None,
-                });
+        if !is_attr_decl {
+            match tag.name.as_str() {
+                "mj-head" => check_singleton(tag, &mut head_count, &mut diagnostics),
+                "mj-body" => check_singleton(tag, &mut body_count, &mut diagnostics),
+                _ => {}
             }
         }
 
@@ -90,7 +123,10 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
         }
 
         // Rule 1: Nesting
-        if let Some(allowed) = rules::allowed_parents(&tag.name) {
+        let unknowable_parent = partial && tag.parent_idx.is_none();
+        if let Some(allowed) =
+            rules::allowed_parents(&tag.name).filter(|_| !is_attr_decl && !unknowable_parent)
+        {
             let actual_parent = tag.parent_idx.map(|i| tags[i].name.as_str());
             let is_valid = actual_parent.is_some_and(|parent_name| allowed.contains(&parent_name));
             // "mjml" has no parent entry in allowed_parents, so skip it
@@ -115,7 +151,7 @@ pub fn validate_tags(_text: &str, tags: &[TagInfo]) -> Vec<LintDiagnostic> {
 
         // Rule 2: Required attributes
         let required = rules::required_attributes(&tag.name);
-        if !required.is_empty() {
+        if !required.is_empty() && !is_attr_decl {
             let present: Vec<&str> = tag.attributes.iter().map(|a| a.name.as_str()).collect();
             for attr_name in required {
                 if !present.contains(&attr_name) {
@@ -318,5 +354,135 @@ mod tests {
             .expect("missing attribute should carry a fix");
         assert_eq!(fix.edits.len(), 1);
         assert_eq!(fix.edits[0].1, " src=\"\"");
+    }
+
+    // --- mj-attributes children are tag names being configured, not instances (#19) ---
+
+    const ATTRIBUTES_DOC: &str = "<mjml><mj-head><mj-attributes><mj-all font-family=\"Arial\" /><mj-class name=\"x\" color=\"red\" /><mj-text padding=\"0\" /><mj-section padding=\"0\" /><mj-button color=\"blue\" /><mj-body width=\"600px\" /></mj-attributes></mj-head><mj-body><mj-section><mj-column><mj-text>hi</mj-text></mj-column></mj-section></mj-body></mjml>";
+
+    #[test]
+    fn test_attributes_children_not_nesting_errors() {
+        let diags = validate(ATTRIBUTES_DOC);
+        let nesting: Vec<_> = diags
+            .iter()
+            .filter(|d| d.message.contains("must be inside"))
+            .collect();
+        assert!(
+            nesting.is_empty(),
+            "components inside <mj-attributes> are declarations, got: {:?}",
+            nesting
+        );
+    }
+
+    #[test]
+    fn test_attributes_mj_body_child_not_duplicate() {
+        let diags = validate(ATTRIBUTES_DOC);
+        assert!(
+            !diags.iter().any(|d| d.message.contains("Duplicate")),
+            "<mj-body> inside <mj-attributes> must not count as a second body, got: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn test_attributes_child_missing_required_attr_ok() {
+        let diags = validate("<mjml><mj-head><mj-attributes><mj-image padding=\"0\" /></mj-attributes></mj-head><mj-body></mj-body></mjml>");
+        assert!(
+            !diags.iter().any(|d| d.message.contains("required attribute")),
+            "<mj-image> inside <mj-attributes> does not need src, got: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn test_attributes_mj_class_children_ok() {
+        let diags = validate("<mjml><mj-head><mj-attributes><mj-class name=\"x\"><mj-text color=\"red\" /></mj-class></mj-attributes></mj-head><mj-body></mj-body></mjml>");
+        assert!(
+            !diags.iter().any(|d| d.message.contains("must be inside")),
+            "<mj-class> may hold per-tag defaults, got: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn test_attributes_unknown_child_still_warns() {
+        let diags = validate("<mjml><mj-head><mj-attributes><mj-txt padding=\"0\" /></mj-attributes></mj-head><mj-body></mj-body></mjml>");
+        assert!(
+            diags.iter().any(|d| d.message.contains("Unknown MJML element <mj-txt>")),
+            "typos inside <mj-attributes> are still unknown tags, got: {:?}",
+            diags
+        );
+    }
+
+    // --- documents without an <mjml> root are mj-include partials (#19) ---
+
+    #[test]
+    fn test_partial_head_root_level_tags_not_reported() {
+        let diags = validate("<mj-font name=\"Inter\" href=\"https://fonts.googleapis.com/css?family=Inter\" /><mj-style>.a{}</mj-style>");
+        assert!(
+            diags.is_empty(),
+            "root-level tags in a partial have no knowable parent, got: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn test_partial_body_root_level_tags_not_reported() {
+        let diags = validate("<mj-section><mj-column><mj-text>partial</mj-text></mj-column></mj-section>");
+        assert!(
+            diags.is_empty(),
+            "root-level tags in a partial have no knowable parent, got: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn test_partial_nested_violation_still_reported() {
+        let diags = validate("<mj-section><mj-text>oops</mj-text></mj-section>");
+        let nesting: Vec<_> = diags
+            .iter()
+            .filter(|d| d.message.contains("<mj-text>") && d.message.contains("must be inside"))
+            .collect();
+        assert_eq!(
+            nesting.len(),
+            1,
+            "nested tags inside a partial are still checked, got: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn test_is_partial_true_for_rootless_fragment() {
+        let tags = scan_tags("<mj-section><mj-column></mj-column></mj-section>");
+        assert!(is_partial(&tags));
+    }
+
+    #[test]
+    fn test_is_partial_false_for_full_document() {
+        let tags = scan_tags("<mjml><mj-body></mj-body></mjml>");
+        assert!(!is_partial(&tags));
+    }
+
+    #[test]
+    fn test_is_partial_false_for_rootless_mj_body() {
+        // A forgotten <mjml> wrapper is a mistake, not a partial.
+        let tags = scan_tags("<mj-head></mj-head><mj-body></mj-body>");
+        assert!(!is_partial(&tags));
+    }
+
+    #[test]
+    fn test_is_partial_false_for_plain_html() {
+        let tags = scan_tags("<div><p>hello</p></div>");
+        assert!(!is_partial(&tags));
+    }
+
+    #[test]
+    fn test_attributes_mj_class_still_requires_name() {
+        let diags = validate("<mjml><mj-head><mj-attributes><mj-class color=\"red\" /></mj-attributes></mj-head><mj-body></mj-body></mjml>");
+        assert!(
+            diags.iter().any(|d| d.message.contains("\"name\"")),
+            "<mj-class> itself keeps its required-attribute check, got: {:?}",
+            diags
+        );
     }
 }
