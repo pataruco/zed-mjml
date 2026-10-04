@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 
 use lsp_server::{Connection, Message, Notification, Response};
 use mrml::prelude::parser::loader::{IncludeLoader, IncludeLoaderError};
-use mrml::prelude::parser::ParserOptions;
+use mrml::prelude::parser::{ParserOptions, WarningKind};
 use lsp_types::notification::Notification as _;
 use lsp_types::request::{CodeActionRequest, Completion, HoverRequest, Request as _};
 use lsp_types::{
@@ -238,6 +238,11 @@ fn validate_mjml(text: &str, base_dir: Option<&Path>) -> Vec<Diagnostic> {
     match parsed {
         Ok(output) => {
             for warning in output.warnings {
+                // `inline="inline"` is valid MJML; whether this build can inline CSS
+                // only matters when rendering, which the LSP never does.
+                if matches!(warning.kind, WarningKind::InlineStyleUnsupported) {
+                    continue;
+                }
                 let range = span_to_range(text, warning.span.start, warning.span.end);
                 diagnostics.push(Diagnostic {
                     range,

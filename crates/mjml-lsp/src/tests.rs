@@ -399,6 +399,19 @@ fn test_document_dir_from_untitled_uri_is_none() {
 }
 
 #[test]
+fn test_validate_mjml_inline_style_not_reported() {
+    // `inline="inline"` is valid MJML; the LSP never renders, so mrml's
+    // "inlining not supported in this build" warning is noise here.
+    let text = "<mjml><mj-head><mj-style inline=\"inline\">.a { color: red; }</mj-style></mj-head><mj-body></mj-body></mjml>";
+    let diagnostics = validate_mjml(text, None);
+    assert!(
+        diagnostics.is_empty(),
+        "inline styles should not produce a diagnostic, got: {:?}",
+        diagnostics.iter().map(|d| &d.message).collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn test_validate_mjml_valid_document_still_clean() {
     let text = "<mjml><mj-head><mj-title>Hi</mj-title></mj-head><mj-body><mj-section><mj-column><mj-text>Hello</mj-text></mj-column></mj-section></mj-body></mjml>";
     let diagnostics = validate_mjml(text, None);
