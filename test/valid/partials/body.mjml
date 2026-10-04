@@ -1,0 +1,7 @@
+<!-- mj-include partial for <mj-body>: no <mjml> root, root-level tags are not nesting errors (#19) -->
+<!-- Expected: ZERO diagnostics -->
+<mj-section>
+  <mj-column>
+    <mj-text css-class="footer">You are receiving this because you signed up.</mj-text>
+  </mj-column>
+</mj-section>

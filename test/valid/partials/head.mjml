@@ -1,0 +1,10 @@
+<!-- mj-include partial for <mj-head>: no <mjml> root, root-level tags are not nesting errors (#19) -->
+<!-- Expected: ZERO diagnostics -->
+<mj-title>Newsletter</mj-title>
+<mj-font name="Inter" href="https://fonts.googleapis.com/css?family=Inter" />
+<mj-attributes>
+  <mj-all font-family="Inter, sans-serif" />
+</mj-attributes>
+<mj-style>
+  .footer { color: #888888; }
+</mj-style>

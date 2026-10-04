@@ -1,0 +1,24 @@
+<!-- Component tags inside <mj-attributes> set defaults, they are not instances (#19) -->
+<!-- Expected: ZERO diagnostics -->
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-class name="cta" background-color="#346DB7" color="#ffffff" />
+      <mj-body width="600px" background-color="#f4f4f4" />
+      <mj-section padding="0 20px" />
+      <mj-text padding="10px 25px" font-size="14px" />
+      <mj-image padding="0" />
+      <mj-button border-radius="4px" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-image src="https://example.com/logo.png" alt="Logo" />
+        <mj-text>Defaults from mj-attributes apply here.</mj-text>
+        <mj-button mj-class="cta" href="https://example.com">Go</mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
