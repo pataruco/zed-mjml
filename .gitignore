@@ -1,3 +1,4 @@
 grammars/
 target/
 extension.wasm
+talk/*.pdf
